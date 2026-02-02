@@ -1,14 +1,17 @@
 -- ================= CONFIG =================
 local WEBHOOK_URLS = {
-	"https://discord.com/api/webhooks/1467670290971492373/epApIOFGz9F5An4yhUl_3sXHSW8dcEvj9D9pC3Q1WFNjhsZlizTVf5TpkVaWs49G_sZL"
+	"https://discord.com/api/webhooks/1440713503295148104/eTKQ8_1mYq0f42WwduNoo7F5d2WEWZGj4ei8joz1il--JpIlWjRUsnJ0PPRaRBAwPP5r"
 }
+
+-- Separate webhook strictly for Jester
+local JESTER_ONLY_WEBHOOK = "https://discord.com/api/webhooks/1467851474397561018/-XyREI978MEsyhKqnhEtPyRAsd-hOcB1OQmVyjIZ0FyV758JFv79ZTe3qL9RY129mbm_"
 
 local PRIVATE_SERVER = "https://www.roblox.com/share?code=aad142168d2e0c419085cc0679eb2ef3&type=Server"
 
-local JESTER_ROLES = { "1467788391075545254" }
-local MARI_ROLES   = { "1372297109117861888" }
+local JESTER_ROLES = { "1451885446937182380" }
+local MARI_ROLES   = { "1451885483939463229" }
 
-local VERSION = "DroidScope | Beta v1.0.5 (bytetwo ver)"
+local VERSION = "DroidScope | Beta v1.0.7 (bytetwo ver)"
 local DEFAULT_THUMB = "https://i.ibb.co/S7X9mR6X/image-041fa2.png"
 
 -- ================= SERVICES =================
@@ -31,8 +34,8 @@ assert(HttpRequest, "HTTP not supported")
 -- ================= STATE =================
 local macroRunning = false
 local lastBiome = nil
-local sessionStart = nil
-local hourStart = nil
+local sessionStart = 0
+local hourStart = 0
 
 local merchantCooldown = { Jester = 0, Mari = 0 }
 local MERCHANT_CD = 25
@@ -55,14 +58,24 @@ local BIOME_DATA = {
 
 	GLITCHED = { color=0xFFFF00, thumb="https://i.postimg.cc/mDzwFfX1/GLITCHED.png", everyone=true },
 	DREAMSPACE = { color=0xFF00FF, thumb="https://maxstellar.github.io/biome_thumb/DREAMSPACE.png", everyone=true },
-	CYBERSPACE = { color=0x00FFFF, thumb="https://maxstellar.github.io/biome_thumb/CYBERSPACE.png", everyone=true },
+	CYBERSPACE = { color=0x00FFFF, thumb="https://raw.githubusercontent.com/cresqnt-sys/MultiScope/main/assets/cyberspace.png", everyone=true },
 
 	NORMAL = { never=true }
 }
 
+-- ================= UTILS =================
+local function getPlainUptime()
+	local diff = os.time() - sessionStart
+	local hours = math.floor(diff / 3600)
+	local minutes = math.floor((diff % 3600) / 60)
+	local seconds = diff % 60
+	return string.format("%d hours, %d minutes, %d seconds", hours, minutes, seconds)
+end
+
 -- ================= WEBHOOK =================
-local function sendWebhook(payload)
-	for _, url in ipairs(WEBHOOK_URLS) do
+local function sendWebhook(payload, customUrl)
+	local urls = customUrl and {customUrl} or WEBHOOK_URLS
+	for _, url in ipairs(urls) do
 		HttpRequest({
 			Url = url,
 			Method = "POST",
@@ -91,7 +104,7 @@ local function sendStatus(started)
 			thumbnail = { url = DEFAULT_THUMB },
 			fields = {
 				{ name="Session Start", value="<t:"..sessionStart..":F>", inline=false },
-				{ name="Uptime", value="<t:"..sessionStart..":R>", inline=false }
+				{ name="Uptime", value=getPlainUptime(), inline=false }
 			},
 			footer = { text = VERSION }
 		}}
@@ -109,8 +122,8 @@ local function sendBiome(biome, data, state)
 			thumbnail = { url = data.thumb or DEFAULT_THUMB },
 			fields = {
 				{ name="Account", value=player.Name, inline=false },
-				{ name="Time", value="<t:"..now..":F> (<t:"..now..":R>)", inline=false },
-				{ name="Uptime", value="<t:"..sessionStart..":R>", inline=false },
+				{ name="Time", value="<t:"..now..":F>", inline=false },
+				{ name="Uptime", value=getPlainUptime(), inline=false },
 				{ name="Private Server", value=PRIVATE_SERVER, inline=false },
 				{ name="Status", value=state, inline=false }
 			},
@@ -135,7 +148,7 @@ local function sendHourlyStats()
 			color = 0x1ABC9C,
 			thumbnail = { url = DEFAULT_THUMB },
 			description =
-				"**Uptime:** <t:"..sessionStart..":R>\n" ..
+				"**Uptime:** "..getPlainUptime().."\n" ..
 				"**Total Biomes:** "..totalBiomes.."\n\n" ..
 				table.concat(lines, "\n"),
 			footer = { text = VERSION }
@@ -153,28 +166,37 @@ local function sendMerchant(name)
 	if now - merchantCooldown[name] < MERCHANT_CD then return end
 	merchantCooldown[name] = now
 
-	local title, color, ping =
-		name=="Jester"
-			and ":black_joker: Jester Has Arrived!"
-			or  ":shopping_bags: Mari Has Arrived!",
-		name=="Jester" and 0xA352FF or 0xFF82AB,
-		rolePing(name=="Jester" and JESTER_ROLES or MARI_ROLES)
+	local title, color, ping, thumb
+	local targetWebhook = nil -- Default to standard list
+
+	if name == "Jester" then
+		title = ":black_joker: Jester Has Arrived!"
+		color = 0xA352FF
+		ping = rolePing(JESTER_ROLES)
+		thumb = "https://keylens-website.web.app/merchants/Jester.png"
+		targetWebhook = JESTER_ONLY_WEBHOOK -- Send ONLY to this URL
+	else
+		title = ":shopping_bags: Mari Has Arrived!"
+		color = 0xFF82AB
+		ping = rolePing(MARI_ROLES)
+		thumb = "https://keylens-website.web.app/merchants/Mari.png"
+	end
 
 	sendWebhook({
 		content = ping,
 		embeds = {{
 			title = title,
 			color = color,
-			thumbnail = { url = DEFAULT_THUMB },
+			thumbnail = { url = thumb },
 			fields = {
 				{ name="Account", value=player.Name, inline=false },
-				{ name="Time", value="<t:"..now..":F> (<t:"..now..":R>)", inline=false },
-				{ name="Uptime", value="<t:"..sessionStart..":R>", inline=false },
+				{ name="Time", value="<t:"..now..":F>", inline=false },
+				{ name="Uptime", value=getPlainUptime(), inline=false },
 				{ name="Private Server", value=PRIVATE_SERVER, inline=false }
 			},
 			footer = { text = VERSION }
 		}}
-	})
+	}, targetWebhook)
 end
 
 -- ================= BIOME DETECTION =================
