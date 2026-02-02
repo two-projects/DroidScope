@@ -1,17 +1,17 @@
 -- ================= CONFIG =================
 local WEBHOOK_URLS = {
-	"https://discord.com/api/webhooks/1440713503295148104/eTKQ8_1mYq0f42WwduNoo7F5d2WEWZGj4ei8joz1il--JpIlWjRUsnJ0PPRaRBAwPP5r"
+	"https://discord.com/api/webhooks/1467670290971492373/epApIOFGz9F5An4yhUl_3sXHSW8dcEvj9D9pC3Q1WFNjhsZlizTVf5TpkVaWs49G_sZL"
 }
 
--- Separate webhook strictly for Jester
-local JESTER_ONLY_WEBHOOK = "https://discord.com/api/webhooks/1467851474397561018/-XyREI978MEsyhKqnhEtPyRAsd-hOcB1OQmVyjIZ0FyV758JFv79ZTe3qL9RY129mbm_"
+-- Webhook for BOTH Jester and Mari
+local MERCHANT_WEBHOOK = "https://discord.com/api/webhooks/1467851474397561018/-XyREI978MEsyhKqnhEtPyRAsd-hOcB1OQmVyjIZ0FyV758JFv79ZTe3qL9RY129mbm_"
 
 local PRIVATE_SERVER = "https://www.roblox.com/share?code=aad142168d2e0c419085cc0679eb2ef3&type=Server"
 
 local JESTER_ROLES = { "1451885446937182380" }
-local MARI_ROLES   = { "1451885483939463229" }
+local MARI_ROLES   = { "1467788352462913669" } 
 
-local VERSION = "DroidScope | Beta v1.0.7 (bytetwo ver)"
+local VERSION = "DroidScope | Beta v1.0.3 (bytetwo ver)"
 local DEFAULT_THUMB = "https://i.ibb.co/S7X9mR6X/image-041fa2.png"
 
 -- ================= SERVICES =================
@@ -167,14 +167,12 @@ local function sendMerchant(name)
 	merchantCooldown[name] = now
 
 	local title, color, ping, thumb
-	local targetWebhook = nil -- Default to standard list
 
 	if name == "Jester" then
 		title = ":black_joker: Jester Has Arrived!"
 		color = 0xA352FF
 		ping = rolePing(JESTER_ROLES)
 		thumb = "https://keylens-website.web.app/merchants/Jester.png"
-		targetWebhook = JESTER_ONLY_WEBHOOK -- Send ONLY to this URL
 	else
 		title = ":shopping_bags: Mari Has Arrived!"
 		color = 0xFF82AB
@@ -196,7 +194,7 @@ local function sendMerchant(name)
 			},
 			footer = { text = VERSION }
 		}}
-	}, targetWebhook)
+	}, MERCHANT_WEBHOOK) -- Only sends to the specific Merchant Webhook
 end
 
 -- ================= BIOME DETECTION =================
