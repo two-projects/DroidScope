@@ -8,7 +8,8 @@ local PRIVATE_SERVER = "https://www.roblox.com/share?code=aad142168d2e0c419085cc
 local JESTER_ROLES = { "1451885446937182380" }
 local MARI_ROLES   = { "1451885483939463229" }
 
-local VERSION = "DroidScope | Beta v1.0.3 (bytetwo ver)"
+local VERSION = "DroidScope | Beta v1.0.5 (bytetwo ver)"
+local DEFAULT_THUMB = "https://i.ibb.co/S7X9mR6X/image-041fa2.png"
 
 -- ================= SERVICES =================
 local Players = game:GetService("Players")
@@ -42,19 +43,19 @@ local totalBiomes = 0
 
 -- ================= BIOME DATA =================
 local BIOME_DATA = {
-	WINDY = { color=0xFFFFFF },
-	RAINY = { color=0x55925F },
-	SNOWY = { color=0xFFFFFF },
-	["SAND STORM"] = { color=0xFFA500 },
-	HELL = { color=0xFB4F29 },
-	STARFALL = { color=0xFFFFFF },
-	CORRUPTION = { color=0x800080 },
-	NULL = { color=0x808080 },
-	HEAVEN = { color=0xE7DC43 },
+	WINDY = { color=0xFFFFFF, thumb="https://maxstellar.github.io/biome_thumb/WINDY.png" },
+	RAINY = { color=0x55925F, thumb="https://maxstellar.github.io/biome_thumb/RAINY.png" },
+	SNOWY = { color=0xFFFFFF, thumb="https://maxstellar.github.io/biome_thumb/SNOWY.png" },
+	["SAND STORM"] = { color=0xFFA500, thumb="https://maxstellar.github.io/biome_thumb/SAND%20STORM.png" },
+	HELL = { color=0xFB4F29, thumb="https://maxstellar.github.io/biome_thumb/HELL.png" },
+	STARFALL = { color=0xFFFFFF, thumb="https://maxstellar.github.io/biome_thumb/STARFALL.png" },
+	CORRUPTION = { color=0x800080, thumb="https://maxstellar.github.io/biome_thumb/CORRUPTION.png" },
+	NULL = { color=0x808080, thumb="https://maxstellar.github.io/biome_thumb/NULL.png" },
+	HEAVEN = { color=0xADD8E6, thumb="https://maxstellar.github.io/biome_thumb/HEAVEN.png" },
 
-	GLITCHED = { color=0xFFFF00, everyone=true },
-	DREAMSPACE = { color=0xFF00FF, everyone=true },
-	CYBERSPACE = { color=0x00FFFF, everyone=true },
+	GLITCHED = { color=0xFFFF00, thumb="https://i.postimg.cc/mDzwFfX1/GLITCHED.png", everyone=true },
+	DREAMSPACE = { color=0xFF00FF, thumb="https://maxstellar.github.io/biome_thumb/DREAMSPACE.png", everyone=true },
+	CYBERSPACE = { color=0x00FFFF, thumb="https://maxstellar.github.io/biome_thumb/CYBERSPACE.png", everyone=true },
 
 	NORMAL = { never=true }
 }
@@ -87,6 +88,7 @@ local function sendStatus(started)
 				and ":bar_chart: Status Update: DroidScope Started"
 				or  ":bar_chart: Status Update: DroidScope Stopped",
 			color = 0x3498DB,
+			thumbnail = { url = DEFAULT_THUMB },
 			fields = {
 				{ name="Session Start", value="<t:"..sessionStart..":F>", inline=false },
 				{ name="Uptime", value="<t:"..sessionStart..":R>", inline=false }
@@ -104,6 +106,7 @@ local function sendBiome(biome, data, state)
 		embeds = {{
 			title = "Biome "..state.." - "..biome,
 			color = data.color,
+			thumbnail = { url = data.thumb or DEFAULT_THUMB },
 			fields = {
 				{ name="Account", value=player.Name, inline=false },
 				{ name="Time", value="<t:"..now..":F> (<t:"..now..":R>)", inline=false },
@@ -116,7 +119,7 @@ local function sendBiome(biome, data, state)
 	})
 end
 
--- ================= HOURLY REPORT (FIXED GRAPH) =================
+-- ================= HOURLY REPORT =================
 local function sendHourlyStats()
 	if totalBiomes == 0 then return end
 
@@ -130,6 +133,7 @@ local function sendHourlyStats()
 		embeds = {{
 			title = "📊 Hourly Biome Report",
 			color = 0x1ABC9C,
+			thumbnail = { url = DEFAULT_THUMB },
 			description =
 				"**Uptime:** <t:"..sessionStart..":R>\n" ..
 				"**Total Biomes:** "..totalBiomes.."\n\n" ..
@@ -141,6 +145,36 @@ local function sendHourlyStats()
 	biomeStats = {}
 	totalBiomes = 0
 	hourStart = os.time()
+end
+
+-- ================= MERCHANT =================
+local function sendMerchant(name)
+	local now = os.time()
+	if now - merchantCooldown[name] < MERCHANT_CD then return end
+	merchantCooldown[name] = now
+
+	local title, color, ping =
+		name=="Jester"
+			and ":black_joker: Jester Has Arrived!"
+			or  ":shopping_bags: Mari Has Arrived!",
+		name=="Jester" and 0xA352FF or 0xFF82AB,
+		rolePing(name=="Jester" and JESTER_ROLES or MARI_ROLES)
+
+	sendWebhook({
+		content = ping,
+		embeds = {{
+			title = title,
+			color = color,
+			thumbnail = { url = DEFAULT_THUMB },
+			fields = {
+				{ name="Account", value=player.Name, inline=false },
+				{ name="Time", value="<t:"..now..":F> (<t:"..now..":R>)", inline=false },
+				{ name="Uptime", value="<t:"..sessionStart..":R>", inline=false },
+				{ name="Private Server", value=PRIVATE_SERVER, inline=false }
+			},
+			footer = { text = VERSION }
+		}}
+	})
 end
 
 -- ================= BIOME DETECTION =================
@@ -163,35 +197,6 @@ local function detectBiome()
 			end
 		end
 	end
-end
-
--- ================= MERCHANT =================
-local function sendMerchant(name)
-	local now = os.time()
-	if now - merchantCooldown[name] < MERCHANT_CD then return end
-	merchantCooldown[name] = now
-
-	local title, color, ping =
-		name=="Jester"
-			and ":black_joker: Jester Has Arrived!"
-			or  ":shopping_bags: Mari Has Arrived!",
-		name=="Jester" and 0xA352FF or 0xFF82AB,
-		rolePing(name=="Jester" and JESTER_ROLES or MARI_ROLES)
-
-	sendWebhook({
-		content = ping,
-		embeds = {{
-			title = title,
-			color = color,
-			fields = {
-				{ name="Account", value=player.Name, inline=false },
-				{ name="Time", value="<t:"..now..":F> (<t:"..now..":R>)", inline=false },
-				{ name="Uptime", value="<t:"..sessionStart..":R>", inline=false },
-				{ name="Private Server", value=PRIVATE_SERVER, inline=false }
-			},
-			footer = { text = VERSION }
-		}}
-	})
 end
 
 TextChatService.OnIncomingMessage = function(msg)
