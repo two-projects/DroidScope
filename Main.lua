@@ -8,7 +8,7 @@ local PRIVATE_SERVER = "https://www.roblox.com/share?code=aad142168d2e0c419085cc
 local JESTER_ROLES = { "1372297015739940864" }
 local MARI_ROLES   = { "1372297109117861888" }
 
-local VERSION = "DroidScope | Beta v1.0.3 (bytetwo ver)"
+local VERSION = "DroidScope | Beta v1.0.5 (bytetwo ver)"
 local HOURLY_INTERVAL = 3600
 local SAVE_FILE = "DroidScope_LifetimeStats.json"
 
