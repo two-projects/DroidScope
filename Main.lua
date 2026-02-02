@@ -6,6 +6,7 @@ local JESTER_ROLE = "1451885446937182380"
 local MARI_ROLE   = "1451885483939463229"
 
 local SAVE_FILE = "DroidScope_BiomeStats.json"
+local HOUR_SECONDS = 3600
 
 -- ================= SERVICES =================
 local Players = game:GetService("Players")
@@ -30,7 +31,7 @@ local lastBiome = nil
 local sessionTime = nil
 local hourStart = nil
 
--- session stats (hourly)
+-- hourly stats
 local biomeStats = {}
 local totalBiomes = 0
 
@@ -59,21 +60,21 @@ loadStats()
 
 -- ================= BIOME DATA =================
 local BIOME_DATA = {
-	WINDY = { color=0xFFFFFF, thumb="https://maxstellar.github.io/biome_thumb/WINDY.png" },
-	RAINY = { color=0x55925F, thumb="https://maxstellar.github.io/biome_thumb/RAINY.png" },
-	SNOWY = { color=0xFFFFFF, thumb="https://maxstellar.github.io/biome_thumb/SNOWY.png" },
-	["SAND STORM"] = { color=0xFFA500, thumb="https://maxstellar.github.io/biome_thumb/SAND%20STORM.png" },
-	HELL = { color=0xFB4F29, thumb="https://maxstellar.github.io/biome_thumb/HELL.png" },
-	STARFALL = { color=0xFFFFFF, thumb="https://maxstellar.github.io/biome_thumb/STARFALL.png" },
-	CORRUPTION = { color=0x800080, thumb="https://maxstellar.github.io/biome_thumb/CORRUPTION.png" },
-	NULL = { color=0x808080, thumb="https://maxstellar.github.io/biome_thumb/NULL.png" },
-	HEAVEN = { color=0xADD8E6, thumb="https://maxstellar.github.io/biome_thumb/HEAVEN.png" },
+	WINDY = {},
+	RAINY = {},
+	SNOWY = {},
+	["SAND STORM"] = {},
+	HELL = {},
+	STARFALL = {},
+	CORRUPTION = {},
+	NULL = {},
+	HEAVEN = {},
 
-	GLITCHED = { color=0xFFFF00, thumb="https://i.postimg.cc/mDzwFfX1/GLITCHED.png", everyone=true },
-	DREAMSPACE = { color=0xFF00FF, thumb="https://maxstellar.github.io/biome_thumb/DREAMSPACE.png", everyone=true },
-	CYBERSPACE = { color=0x00FFFF, thumb="https://raw.githubusercontent.com/cresqnt-sys/MultiScope/main/assets/cyberspace.png", everyone=true },
+	GLITCHED = { everyone = true },
+	DREAMSPACE = { everyone = true },
+	CYBERSPACE = { everyone = true },
 
-	NORMAL = { never=true }
+	NORMAL = { never = true }
 }
 
 -- ================= WEBHOOK =================
@@ -95,7 +96,6 @@ local function sendStatusEmbed(started)
 	sendWebhook({
 		embeds = {{
 			title = title,
-			color = 0x3498DB,
 			fields = {{
 				name = "Session",
 				value = "<t:"..sessionTime..":F> (<t:"..sessionTime..":R>)",
@@ -109,40 +109,78 @@ end
 -- ================= BIOME EMBED =================
 local function sendBiomeEmbed(biome, data, state)
 	local t = os.time()
-
 	sendWebhook({
 		content = data.everyone and "@everyone" or nil,
 		embeds = {{
 			title = "Biome "..state.." - "..biome,
-			color = data.color,
 			fields = {
-				{ name="Account", value=player.Name, inline=false },
-				{ name="\u{200B}", value="<t:"..t..":F> (<t:"..t..":R>)", inline=false },
-				{ name="Private Server", value=PRIVATE_SERVER, inline=false },
-				{ name="Status", value=state, inline=false }
+				{ name = "Account", value = player.Name, inline = false },
+				{ name = "\u{200B}", value = "<t:"..t..":F> (<t:"..t..":R>)", inline = false },
+				{ name = "Private Server", value = PRIVATE_SERVER, inline = false },
+				{ name = "Status", value = state, inline = false }
 			},
-			thumbnail = { url = data.thumb },
 			footer = { text = "DroidScope | Beta v1.0.1 (bytetwo ver)" }
 		}}
 	})
+end
+
+-- ================= CHART (NO HOSTING) =================
+local function buildChartURL(hourly, allTime)
+	local labels, hData, aData = {}, {}, {}
+	for biome, count in pairs(hourly) do
+		table.insert(labels, biome)
+		table.insert(hData, count)
+		table.insert(aData, allTime[biome] or 0)
+	end
+
+	local chart = {
+		type = "bar",
+		data = {
+			labels = labels,
+			datasets = {
+				{ label = "Hourly", data = hData },
+				{ label = "All-Time", data = aData }
+			}
+		},
+		options = {
+			plugins = { title = { display = true, text = "Biome Stats" } }
+		}
+	}
+
+	return "https://quickchart.io/chart?c=" ..
+		HttpService:UrlEncode(HttpService:JSONEncode(chart))
 end
 
 -- ================= HOURLY STATS =================
 local function sendHourlyStats()
 	if totalBiomes == 0 then return end
 
-	local lines = {}
+	local hourlyLines = {}
 	for biome, count in pairs(biomeStats) do
-		local percent = math.floor((count / totalBiomes) * 1000) / 10
-		table.insert(lines, biome..": "..count.." ("..percent.."%)")
+		local pct = math.floor((count / totalBiomes) * 1000) / 10
+		table.insert(hourlyLines, biome..": "..count.." ("..pct.."%)")
 	end
+
+	local allTotal = 0
+	for _, c in pairs(lifetimeStats) do allTotal += c end
+
+	local allLines = {}
+	for biome, count in pairs(lifetimeStats) do
+		local pct = allTotal > 0 and math.floor((count / allTotal) * 1000) / 10 or 0
+		table.insert(allLines, biome..": "..count.." ("..pct.."%)")
+	end
+
+	local uptime = os.time() - sessionTime
+	local chartURL = buildChartURL(biomeStats, lifetimeStats)
 
 	sendWebhook({
 		embeds = {{
 			title = "📊 Hourly Biome Report",
-			color = 0x1ABC9C,
 			description =
-				"Total Biomes: **"..totalBiomes.."**\n\n"..table.concat(lines, "\n"),
+				"**Uptime:** "..math.floor(uptime/3600).."h "..math.floor((uptime%3600)/60).."m\n\n"..
+				"**Hourly ("..totalBiomes..")**\n"..table.concat(hourlyLines, "\n")..
+				"\n\n──────────────\n**All-Time ("..allTotal..")**\n"..table.concat(allLines, "\n"),
+			image = { url = chartURL },
 			footer = { text = "DroidScope | Beta v1.0.1 (bytetwo ver)" }
 		}}
 	})
@@ -170,13 +208,9 @@ local function detectBiome()
 
 				if not data.never then
 					sendBiomeEmbed(biome, data, "Started")
-
-					-- hourly stats
 					biomeStats[biome] = (biomeStats[biome] or 0) + 1
-					totalBiomes += 1
-
-					-- lifetime stats
 					lifetimeStats[biome] = (lifetimeStats[biome] or 0) + 1
+					totalBiomes += 1
 					saveStats()
 				end
 			end
@@ -184,21 +218,16 @@ local function detectBiome()
 	end
 end
 
--- ================= MERCHANT =================
+-- ================= MERCHANTS =================
 local function sendMerchant(name)
 	local now = os.time()
-	local title, role, color =
-		name=="Jester"
-		and ":black_joker: Jester Has Arrived!"
-		or  ":shopping_bags: Mari Has Arrived!",
-		name=="Jester" and JESTER_ROLE or MARI_ROLE,
-		name=="Jester" and 0xA352FF or 0xFF82AB
+	local title = name=="Jester" and ":black_joker: Jester Has Arrived!" or ":shopping_bags: Mari Has Arrived!"
+	local role  = name=="Jester" and JESTER_ROLE or MARI_ROLE
 
 	sendWebhook({
 		content = "<@&"..role..">",
 		embeds = {{
 			title = title,
-			color = color,
 			fields = {
 				{ name="Account", value=player.Name, inline=false },
 				{ name="\u{200B}", value="<t:"..now..":F> (<t:"..now..":R>)", inline=false },
@@ -221,9 +250,8 @@ task.spawn(function()
 	while true do
 		if macroRunning then
 			detectBiome()
-			if os.time() - hourStart >= 3600 then
+			if os.time() - hourStart >= HOUR_SECONDS then
 				sendHourlyStats()
-				saveStats()
 			end
 		end
 		task.wait(1.5)
@@ -236,42 +264,37 @@ player.Idled:Connect(function()
 	VirtualUser:ClickButton2(Vector2.new())
 end)
 
--- ================= UI =================
+-- ================= UI (SMALLER + MOVABLE) =================
 local gui = Instance.new("ScreenGui", player.PlayerGui)
 gui.ResetOnSpawn = false
 
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.fromScale(0.5,0.2)
-frame.Position = UDim2.fromScale(0.25,0.7)
+frame.Size = UDim2.fromScale(0.38, 0.16) -- smaller
+frame.Position = UDim2.fromScale(0.31, 0.75)
 frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0.15,0)
 
 local dragging, dragStart, startPos
-
 frame.InputBegan:Connect(function(i)
 	if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
-		dragging=true
-		dragStart=i.Position
-		startPos=frame.Position
+		dragging=true; dragStart=i.Position; startPos=frame.Position
 	end
 end)
-
 frame.InputChanged:Connect(function(i)
 	if dragging then
-		local delta=i.Position-dragStart
-		frame.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+delta.X,startPos.Y.Scale,startPos.Y.Offset+delta.Y)
+		local d=i.Position-dragStart
+		frame.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+d.X,startPos.Y.Scale,startPos.Y.Offset+d.Y)
 	end
 end)
-
 UserInputService.InputEnded:Connect(function(i)
 	if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
 		dragging=false
 	end
 end)
 
-local function button(txt,pos,col,cb)
+local function btn(txt,pos,col,cb)
 	local b=Instance.new("TextButton",frame)
-	b.Size=UDim2.fromScale(0.45,0.4)
+	b.Size=UDim2.fromScale(0.45,0.45)
 	b.Position=pos
 	b.Text=txt
 	b.TextScaled=true
@@ -282,7 +305,7 @@ local function button(txt,pos,col,cb)
 	b.Activated:Connect(cb)
 end
 
-button("START",UDim2.fromScale(0.03,0.5),Color3.fromRGB(46,204,113),function()
+btn("START",UDim2.fromScale(0.03,0.48),Color3.fromRGB(46,204,113),function()
 	if macroRunning then return end
 	macroRunning=true
 	sessionTime=os.time()
@@ -292,7 +315,7 @@ button("START",UDim2.fromScale(0.03,0.5),Color3.fromRGB(46,204,113),function()
 	sendStatusEmbed(true)
 end)
 
-button("STOP",UDim2.fromScale(0.52,0.5),Color3.fromRGB(231,76,60),function()
+btn("STOP",UDim2.fromScale(0.52,0.48),Color3.fromRGB(231,76,60),function()
 	if not macroRunning then return end
 	macroRunning=false
 	saveStats()
