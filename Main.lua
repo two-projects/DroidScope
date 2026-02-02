@@ -66,10 +66,18 @@ local BIOME_DATA = {
 -- ================= UTILS =================
 local function getPlainUptime()
 	local diff = os.time() - sessionStart
-	local hours = math.floor(diff / 3600)
+	local days = math.floor(diff / 86400)
+	local hours = math.floor((diff % 86400) / 3600)
 	local minutes = math.floor((diff % 3600) / 60)
 	local seconds = diff % 60
-	return string.format("%d hours, %d minutes, %d seconds", hours, minutes, seconds)
+	
+	local str = ""
+	if days > 0 then str = str .. days .. "d " end
+	if hours > 0 or days > 0 then str = str .. hours .. "hr " end
+	if minutes > 0 or hours > 0 or days > 0 then str = str .. minutes .. "m " end
+	str = str .. seconds .. "s"
+	
+	return str
 end
 
 -- ================= WEBHOOK =================
@@ -122,7 +130,7 @@ local function sendBiome(biome, data, state)
 			thumbnail = { url = data.thumb or DEFAULT_THUMB },
 			fields = {
 				{ name="Account", value=player.Name, inline=false },
-				{ name="Time", value="<t:"..now..":F>", inline=false },
+				{ name="Time", value="<t:"..now..":F> (<t:"..now..":R>)", inline=false },
 				{ name="Uptime", value=getPlainUptime(), inline=false },
 				{ name="Private Server", value=PRIVATE_SERVER, inline=false },
 				{ name="Status", value=state, inline=false }
@@ -188,13 +196,13 @@ local function sendMerchant(name)
 			thumbnail = { url = thumb },
 			fields = {
 				{ name="Account", value=player.Name, inline=false },
-				{ name="Time", value="<t:"..now..":F>", inline=false },
+				{ name="Time", value="<t:"..now..":F> (<t:"..now..":R>)", inline=false },
 				{ name="Uptime", value=getPlainUptime(), inline=false },
 				{ name="Private Server", value=PRIVATE_SERVER, inline=false }
 			},
 			footer = { text = VERSION }
 		}}
-	}, MERCHANT_WEBHOOK) -- Only sends to the specific Merchant Webhook
+	}, MERCHANT_WEBHOOK)
 end
 
 -- ================= BIOME DETECTION =================
