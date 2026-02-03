@@ -11,7 +11,7 @@ local PRIVATE_SERVER = "https://www.roblox.com/share?code=aad142168d2e0c419085cc
 local JESTER_ROLES = { "1467788391075545254" }
 local MARI_ROLES   = { "1467788352462913669" } 
 
-local VERSION = "DroidScope | Beta v1.1.2 (bytetwo ver)"
+local VERSION = "DroidScope | Beta v2.1.1 (bytetwo ver)"
 local DEFAULT_THUMB = "https://i.ibb.co/S7X9mR6X/image-041fa2.png"
 
 -- ================= SERVICES =================
@@ -20,6 +20,7 @@ local HttpService = game:GetService("HttpService")
 local TextChatService = game:GetService("TextChatService")
 local UserInputService = game:GetService("UserInputService")
 local VirtualUser = game:GetService("VirtualUser")
+local Lighting = game:GetService("Lighting") -- Needed for Shadow Kill
 local player = Players.LocalPlayer
 
 -- ================= HTTP =================
@@ -43,6 +44,24 @@ local MERCHANT_CD = 25
 -- hourly stats
 local biomeStats = {}
 local totalBiomes = 0
+
+-- ================= VPS LIGHTING BOOST =================
+local function boostFPS()
+    -- Sets Rendering to Lowest
+	settings().Rendering.QualityLevel = 1
+    
+    -- Kill Shadows and heavy Lighting effects
+    Lighting.GlobalShadows = false
+    Lighting.Technology = Enum.Technology.Compatibility
+    Lighting.FogEnd = 9e9
+    
+    -- Strip Material
+	for _, v in ipairs(game:GetDescendants()) do
+		if v:IsA("BasePart") and not v:IsA("MeshPart") then
+			v.Material = Enum.Material.SmoothPlastic
+		end
+	end
+end
 
 -- ================= BIOME DATA =================
 local BIOME_DATA = {
@@ -107,7 +126,7 @@ local function sendStatus(started)
 		embeds = {{
 			title = started
 				and ":bar_chart: Status Update: DroidScope Started"
-				or  ":bar_chart: Status Update: DroidScope Stopped",
+				or ":bar_chart: Status Update: DroidScope Stopped",
 			color = 0x3498DB,
 			thumbnail = { url = DEFAULT_THUMB },
 			fields = {
@@ -287,6 +306,7 @@ end
 btn("START", UDim2.fromScale(0.03,0.5), Color3.fromRGB(46,204,113), function()
 	if macroRunning then return end
 	macroRunning = true
+	boostFPS() -- Applies Smooth Plastic + Shadow Kill
 	lastBiome = nil
 	sessionStart = os.time()
 	hourStart = sessionStart
