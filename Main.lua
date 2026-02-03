@@ -8,7 +8,7 @@ local MERCHANT_WEBHOOK = "https://discord.com/api/webhooks/1467851474397561018/-
 
 local PRIVATE_SERVER = "https://www.roblox.com/share?code=aad142168d2e0c419085cc0679eb2ef3&type=Server"
 
-local JESTER_ROLES = { "1451885446937182380" }
+local JESTER_ROLES = { "1467788391075545254" }
 local MARI_ROLES   = { "1467788352462913669" } 
 
 local VERSION = "DroidScope | Beta v1.1.2 (bytetwo ver)"
