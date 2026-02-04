@@ -83,7 +83,6 @@ end
 local macroRunning = false
 local lastBiome = nil
 local sessionStart = 0
-local hourStart = 0
 local merchantCooldown = { Jester = 0, Mari = 0 }
 local MERCHANT_CD = 25
 
@@ -102,7 +101,12 @@ end
 local function sendWebhook(payload, customUrl)
 	local urls = customUrl and {customUrl} or WEBHOOK_URLS
 	for _, url in ipairs(urls) do
-		HttpRequest({Url = url, Method = "POST", Headers = {["Content-Type"]="application/json"}, Body = HttpService:JSONEncode(payload)})
+		HttpRequest({
+			Url = url,
+			Method = "POST",
+			Headers = {["Content-Type"]="application/json"},
+			Body = HttpService:JSONEncode(payload)
+		})
 	end
 end
 
@@ -164,6 +168,7 @@ local function detectBiome()
 	end
 end
 
+-- ================= MERCHANT DETECTION (UPDATED IMAGES) =================
 TextChatService.OnIncomingMessage = function(msg)
 	if not macroRunning or not msg.Text then return end
 	local t = msg.Text:lower()
@@ -173,11 +178,17 @@ TextChatService.OnIncomingMessage = function(msg)
 		if now - merchantCooldown[name] < MERCHANT_CD then return end
 		merchantCooldown[name] = now
 		sendWebhook({
-            content = name=="Jester" and "<@&"..JESTER_ROLES[1]..">" or "<@&"..MARI_ROLES[1]..">", 
+            content = name=="Jester"
+                and "<@&"..JESTER_ROLES[1]..">"
+                or "<@&"..MARI_ROLES[1]..">",
             embeds = {{
-                title = name .. " Has Arrived!", 
-                color = 0xA352FF, 
-                thumbnail = {url = "https://keylens-website.web.app/merchants/"..name..".png"}, 
+                title = name .. " Has Arrived!",
+                color = 0xA352FF,
+                thumbnail = {
+                    url = name == "Jester"
+                        and "https://cresqnt.com/api/images/JESTER.png"
+                        or "https://cresqnt.com/api/images/MARI.png"
+                },
                 fields = {
                     { name = "Account", value = player.Name, inline = false },
                     { name = "Time", value = "<t:"..now..":F>", inline = false },
@@ -190,33 +201,63 @@ TextChatService.OnIncomingMessage = function(msg)
 	end
 end
 
-task.spawn(function() while true do if macroRunning then detectBiome() end task.wait(1.5) end end)
-player.Idled:Connect(function() VirtualUser:CaptureController(); VirtualUser:ClickButton2(Vector2.new()) end)
+task.spawn(function()
+	while true do
+		if macroRunning then detectBiome() end
+		task.wait(1.5)
+	end
+end)
+
+player.Idled:Connect(function()
+	VirtualUser:CaptureController()
+	VirtualUser:ClickButton2(Vector2.new())
+end)
 
 -- ================= UI =================
-local gui = Instance.new("ScreenGui", player.PlayerGui); gui.ResetOnSpawn = false
-local frame = Instance.new("Frame", gui); frame.Size = UDim2.fromScale(0.42,0.16); frame.Position = UDim2.fromScale(0.29,0.75); frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+local gui = Instance.new("ScreenGui", player.PlayerGui)
+gui.ResetOnSpawn = false
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.fromScale(0.42,0.16)
+frame.Position = UDim2.fromScale(0.29,0.75)
+frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0.15,0)
-local title = Instance.new("TextLabel", frame); title.Size = UDim2.fromScale(1,0.35); title.BackgroundTransparency = 1; title.Text = "DroidScope"; title.TextScaled = true; title.Font = Enum.Font.GothamBold; title.TextColor3 = Color3.new(1,1,1)
+
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.fromScale(1,0.35)
+title.BackgroundTransparency = 1
+title.Text = "DroidScope"
+title.TextScaled = true
+title.Font = Enum.Font.GothamBold
+title.TextColor3 = Color3.new(1,1,1)
 
 local function btn(text,pos,color,cb)
-	local b = Instance.new("TextButton", frame); b.Size = UDim2.fromScale(0.45,0.4); b.Position = pos; b.Text = text; b.TextScaled = true; b.Font = Enum.Font.GothamBold; b.BackgroundColor3 = color; b.TextColor3 = Color3.new(1,1,1)
-	Instance.new("UICorner", b).CornerRadius = UDim.new(0.2,0); b.Activated:Connect(cb)
+	local b = Instance.new("TextButton", frame)
+	b.Size = UDim2.fromScale(0.45,0.4)
+	b.Position = pos
+	b.Text = text
+	b.TextScaled = true
+	b.Font = Enum.Font.GothamBold
+	b.BackgroundColor3 = color
+	b.TextColor3 = Color3.new(1,1,1)
+	Instance.new("UICorner", b).CornerRadius = UDim.new(0.2,0)
+	b.Activated:Connect(cb)
 end
 
 btn("START", UDim2.fromScale(0.03,0.5), Color3.fromRGB(46,204,113), function()
 	if macroRunning then return end
 	macroRunning = true
 	boostFPS()
-	sessionStart = os.time(); lastBiome = nil
+	sessionStart = os.time()
+	lastBiome = nil
 	sendWebhook({
         embeds = {{
-            title = ":bar_chart: DroidScope Started", 
-            color = 0x3498DB, 
+            title = ":bar_chart: DroidScope Started",
+            color = 0x3498DB,
             fields = {
                 { name = "Session Start", value = "<t:"..sessionStart..":F>", inline = false },
                 { name = "Uptime", value = "0s", inline = false }
-            }, 
+            },
             footer = { text = VERSION }
         }}
     })
@@ -227,6 +268,26 @@ btn("STOP", UDim2.fromScale(0.52,0.5), Color3.fromRGB(231,76,60), function()
 end)
 
 local dragging, dragStart, startPos
-frame.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dragging=true; dragStart=i.Position; startPos=frame.Position end end)
-frame.InputChanged:Connect(function(i) if dragging then local d=i.Position-dragStart; frame.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+d.X,startPos.Y.Scale,startPos.Y.Offset+d.Y) end end)
-UserInputService.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then dragging=false end end)
+frame.InputBegan:Connect(function(i)
+	if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = i.Position
+		startPos = frame.Position
+	end
+end)
+
+frame.InputChanged:Connect(function(i)
+	if dragging then
+		local d = i.Position - dragStart
+		frame.Position = UDim2.new(
+			startPos.X.Scale, startPos.X.Offset + d.X,
+			startPos.Y.Scale, startPos.Y.Offset + d.Y
+		)
+	end
+end)
+
+UserInputService.InputEnded:Connect(function(i)
+	if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+		dragging = false
+	end
+end)
