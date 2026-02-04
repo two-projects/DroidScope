@@ -6,7 +6,7 @@ local MERCHANT_WEBHOOK = "https://discord.com/api/webhooks/1467851474397561018/-
 local PRIVATE_SERVER = "https://www.roblox.com/share?code=aad142168d2e0c419085cc0679eb2ef3&type=Server"
 local JESTER_ROLES = { "1467788391075545254" }
 local MARI_ROLES   = { "1467788352462913669" } 
-local VERSION = "DroidScope | Beta v2.1.3 (Ultra FPS)"
+local VERSION = "DroidScope | Beta v1.1.2 (Ultra FPS)"
 local DEFAULT_THUMB = "https://i.ibb.co/S7X9mR6X/image-041fa2.png"
 
 -- ================= SERVICES =================
@@ -19,15 +19,13 @@ local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 local player = Players.LocalPlayer
 
--- ================= NEW FPS BOOSTER =================
+-- ================= ULTRA FPS BOOSTER =================
 local function boostFPS()
     local decalsyeeted = true 
-    local g = game
-    local w = g.Workspace
-    local l = g.Lighting
+    local w = Workspace
+    local l = Lighting
     local t = w.Terrain
 
-    -- Core Lighting/Terrain Settings
     pcall(function()
         sethiddenproperty(l,"Technology",2)
         sethiddenproperty(t,"Decoration",false)
@@ -42,7 +40,6 @@ local function boostFPS()
     l.Brightness = 0
     settings().Rendering.QualityLevel = "Level01"
 
-    -- Function to strip a single object
     local function stripObject(v)
         if v:IsA("BasePart") and not v:IsA("MeshPart") then
             v.Material = "Plastic"
@@ -69,19 +66,13 @@ local function boostFPS()
         end
     end
 
-    -- Initial Map Clean
-    for _, v in pairs(w:GetDescendants()) do
-        stripObject(v)
-    end
-
-    -- Post-Process Effects Kill
+    for _, v in pairs(w:GetDescendants()) do stripObject(v) end
     for _, e in pairs(l:GetChildren()) do
         if e:IsA("BlurEffect") or e:IsA("SunRaysEffect") or e:IsA("ColorCorrectionEffect") or e:IsA("BloomEffect") or e:IsA("DepthOfFieldEffect") then
             e.Enabled = false
         end
     end
 
-    -- Persistent Listener for new objects
     w.DescendantAdded:Connect(function(v)
         task.wait()
         stripObject(v)
@@ -132,6 +123,27 @@ local BIOME_DATA = {
 	NORMAL = { never=true }
 }
 
+-- ================= BIOME EMBED =================
+local function sendBiomeEmbed(biome, data, state)
+    local now = os.time()
+    sendWebhook({
+        content = data.everyone and "@everyone" or nil,
+        embeds = {{
+            title = "Biome " .. state .. " - " .. biome,
+            color = data.color,
+            thumbnail = { url = data.thumb or DEFAULT_THUMB },
+            fields = {
+                { name = "Account", value = player.Name, inline = false },
+                { name = "Time", value = "<t:"..now..":F> (<t:"..now..":R>)", inline = false },
+                { name = "Uptime", value = getPlainUptime(), inline = false },
+                { name = "Private Server", value = PRIVATE_SERVER, inline = false },
+                { name = "Status", value = state, inline = false }
+            },
+            footer = { text = VERSION }
+        }}
+    })
+end
+
 -- ================= DETECTION =================
 local function detectBiome()
 	if not macroRunning then return end
@@ -141,11 +153,11 @@ local function detectBiome()
 			local data = BIOME_DATA[biome]
 			if biome and data and biome ~= lastBiome then
 				if lastBiome and BIOME_DATA[lastBiome] and not BIOME_DATA[lastBiome].never then
-					sendWebhook({embeds={{title="Biome Ended - "..lastBiome, color=BIOME_DATA[lastBiome].color, thumbnail={url=BIOME_DATA[lastBiome].thumb or DEFAULT_THUMB}, fields={{name="Account", value=player.Name, inline=false}, {name="Uptime", value=getPlainUptime(), inline=false}}, footer={text=VERSION}}}})
+					sendBiomeEmbed(lastBiome, BIOME_DATA[lastBiome], "Ended")
 				end
 				lastBiome = biome
 				if not data.never then
-					sendWebhook({content=data.everyone and "@everyone" or nil, embeds={{title="Biome Started - "..biome, color=data.color, thumbnail={url=data.thumb or DEFAULT_THUMB}, fields={{name="Account", value=player.Name, inline=false}, {name="Uptime", value=getPlainUptime(), inline=false}, {name="Private Server", value=PRIVATE_SERVER, inline=false}}, footer={text=VERSION}}}})
+					sendBiomeEmbed(biome, data, "Started")
 				end
 			end
 		end
@@ -160,13 +172,25 @@ TextChatService.OnIncomingMessage = function(msg)
 		local now = os.time()
 		if now - merchantCooldown[name] < MERCHANT_CD then return end
 		merchantCooldown[name] = now
-		sendWebhook({content=name=="Jester" and "<@&"..JESTER_ROLES[1]..">" or "<@&"..MARI_ROLES[1]..">", embeds={{title=name.." Has Arrived!", color=0xA352FF, thumbnail={url="https://keylens-website.web.app/merchants/"..name..".png"}, fields={{name="Account", value=player.Name, inline=false}, {name="Uptime", value=getPlainUptime(), inline=false}, {name="Private Server", value=PRIVATE_SERVER, inline=false}}, footer={text=VERSION}}}}, MERCHANT_WEBHOOK)
+		sendWebhook({
+            content = name=="Jester" and "<@&"..JESTER_ROLES[1]..">" or "<@&"..MARI_ROLES[1]..">", 
+            embeds = {{
+                title = name .. " Has Arrived!", 
+                color = 0xA352FF, 
+                thumbnail = {url = "https://keylens-website.web.app/merchants/"..name..".png"}, 
+                fields = {
+                    { name = "Account", value = player.Name, inline = false },
+                    { name = "Time", value = "<t:"..now..":F>", inline = false },
+                    { name = "Uptime", value = getPlainUptime(), inline = false },
+                    { name = "Private Server", value = PRIVATE_SERVER, inline = false }
+                },
+                footer = { text = VERSION }
+            }}
+        }, MERCHANT_WEBHOOK)
 	end
 end
 
 task.spawn(function() while true do if macroRunning then detectBiome() end task.wait(1.5) end end)
-
--- ANTI AFK
 player.Idled:Connect(function() VirtualUser:CaptureController(); VirtualUser:ClickButton2(Vector2.new()) end)
 
 -- ================= UI =================
@@ -185,14 +209,23 @@ btn("START", UDim2.fromScale(0.03,0.5), Color3.fromRGB(46,204,113), function()
 	macroRunning = true
 	boostFPS()
 	sessionStart = os.time(); lastBiome = nil
-	sendWebhook({embeds={{title=":bar_chart: DroidScope Started", color=0x3498DB, fields={{name="Uptime", value="0s", inline=false}}, footer={text=VERSION}}}})
+	sendWebhook({
+        embeds = {{
+            title = ":bar_chart: DroidScope Started", 
+            color = 0x3498DB, 
+            fields = {
+                { name = "Session Start", value = "<t:"..sessionStart..":F>", inline = false },
+                { name = "Uptime", value = "0s", inline = false }
+            }, 
+            footer = { text = VERSION }
+        }}
+    })
 end)
 
 btn("STOP", UDim2.fromScale(0.52,0.5), Color3.fromRGB(231,76,60), function()
 	macroRunning = false
 end)
 
--- Drag Logic
 local dragging, dragStart, startPos
 frame.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dragging=true; dragStart=i.Position; startPos=frame.Position end end)
 frame.InputChanged:Connect(function(i) if dragging then local d=i.Position-dragStart; frame.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+d.X,startPos.Y.Scale,startPos.Y.Offset+d.Y) end end)
