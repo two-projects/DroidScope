@@ -147,13 +147,29 @@ local function sendMerchant(name)
 	sendWebhook({content=ping, embeds={{title=title, color=color, thumbnail={url=thumb}, fields={{name="Account", value=player.Name, inline=false}, {name="Time", value="<t:"..now..":F> (<t:"..now..":R>)", inline=false}, {name="Uptime", value=getPlainUptime(), inline=false}, {name="Private Server", value=PRIVATE_SERVER, inline=false}}, footer={text=VERSION}}}}, MERCHANT_WEBHOOK)
 end
 
+-- ================= BIOME DATA =================
+local BIOME_DATA = {
+	WINDY = { color=0xFFFFFF, thumb="https://maxstellar.github.io/biome_thumb/WINDY.png" },
+	RAINY = { color=0x55925F, thumb="https://maxstellar.github.io/biome_thumb/RAINY.png" },
+	SNOWY = { color=0xFFFFFF, thumb="https://maxstellar.github.io/biome_thumb/SNOWY.png" },
+	["SAND STORM"] = { color=0xFFA500, thumb="https://maxstellar.github.io/biome_thumb/SAND%20STORM.png" },
+	HELL = { color=0xFB4F29, thumb="https://maxstellar.github.io/biome_thumb/HELL.png" },
+	STARFALL = { color=0xFFFFFF, thumb="https://maxstellar.github.io/biome_thumb/STARFALL.png" },
+	CORRUPTION = { color=0x800080, thumb="https://maxstellar.github.io/biome_thumb/CORRUPTION.png" },
+	NULL = { color=0x808080, thumb="https://maxstellar.github.io/biome_thumb/NULL.png" },
+	HEAVEN = { color=0xADD8E6, thumb="https://maxstellar.github.io/biome_thumb/HEAVEN.png" },
+	GLITCHED = { color=0xFFFF00, thumb="https://i.postimg.cc/mDzwFfX1/GLITCHED.png", everyone=true },
+	DREAMSPACE = { color=0xFF00FF, thumb="https://maxstellar.github.io/biome_thumb/DREAMSPACE.png", everyone=true },
+	CYBERSPACE = { color=0x00FFFF, thumb="https://raw.githubusercontent.com/cresqnt-sys/MultiScope/main/assets/cyberspace.png", everyone=true },
+	NORMAL = { never=true }
+}
+
 -- ================= DETECTION =================
 local function detectBiome()
 	if not macroRunning then return end
 	for _, v in ipairs(player.PlayerGui:GetDescendants()) do
 		if v:IsA("TextLabel") then
 			local biome = v.Text:match("^%[ ([%w%s]+) %]$")
-			local data = BIOME_DATA[game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("Main") and "NORMAL" or biome] -- Fallback check
 			if biome and BIOME_DATA[biome] and biome ~= lastBiome then
 				if lastBiome and BIOME_DATA[lastBiome] and not BIOME_DATA[lastBiome].never then sendBiome(lastBiome, BIOME_DATA[lastBiome], "Ended") end
 				lastBiome = biome
@@ -182,36 +198,15 @@ end)
 
 player.Idled:Connect(function() VirtualUser:CaptureController(); VirtualUser:ClickButton2(Vector2.new()) end)
 
--- ================= THE OLD UI (RESTORED) =================
-local gui = Instance.new("ScreenGui", player.PlayerGui)
-gui.Name = "DroidScopeUI"
-gui.ResetOnSpawn = false
-
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.fromScale(0.42,0.16)
-frame.Position = UDim2.fromScale(0.29,0.75)
-frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+-- ================= UI (RESTORED TO ORIGINAL) =================
+local gui = Instance.new("ScreenGui", player.PlayerGui); gui.ResetOnSpawn = false
+local frame = Instance.new("Frame", gui); frame.Size = UDim2.fromScale(0.42,0.16); frame.Position = UDim2.fromScale(0.29,0.75); frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0.15,0)
-
-local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.fromScale(1,0.35)
-title.BackgroundTransparency = 1
-title.Text = "DroidScope"
-title.TextScaled = true
-title.Font = Enum.Font.GothamBold
-title.TextColor3 = Color3.new(1,1,1)
+local title = Instance.new("TextLabel", frame); title.Size = UDim2.fromScale(1,0.35); title.BackgroundTransparency = 1; title.Text = "DroidScope"; title.TextScaled = true; title.Font = Enum.Font.GothamBold; title.TextColor3 = Color3.new(1,1,1)
 
 local function btn(text,pos,color,cb)
-	local b = Instance.new("TextButton", frame)
-	b.Size = UDim2.fromScale(0.45,0.4)
-	b.Position = pos
-	b.Text = text
-	b.TextScaled = true
-	b.Font = Enum.Font.GothamBold
-	b.BackgroundColor3 = color
-	b.TextColor3 = Color3.new(1,1,1)
-	Instance.new("UICorner", b).CornerRadius = UDim.new(0.2,0)
-	b.Activated:Connect(cb)
+	local b = Instance.new("TextButton", frame); b.Size = UDim2.fromScale(0.45,0.4); b.Position = pos; b.Text = text; b.TextScaled = true; b.Font = Enum.Font.GothamBold; b.BackgroundColor3 = color; b.TextColor3 = Color3.new(1,1,1)
+	Instance.new("UICorner", b).CornerRadius = UDim.new(0.2,0); b.Activated:Connect(cb)
 end
 
 btn("START", UDim2.fromScale(0.03,0.5), Color3.fromRGB(46,204,113), function()
@@ -224,7 +219,6 @@ btn("STOP", UDim2.fromScale(0.52,0.5), Color3.fromRGB(231,76,60), function()
 	macroRunning = false; sendStatus(false)
 end)
 
--- Old Drag Logic
 local dragging, dragStart, startPos
 frame.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dragging=true; dragStart=i.Position; startPos=frame.Position end end)
 frame.InputChanged:Connect(function(i) if dragging then local d=i.Position-dragStart; frame.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+d.X,startPos.Y.Scale,startPos.Y.Offset+d.Y) end end)
