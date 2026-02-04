@@ -3,7 +3,6 @@ local WEBHOOK_URLS = {
 	"https://discord.com/api/webhooks/1467670290971492373/epApIOFGz9F5An4yhUl_3sXHSW8dcEvj9D9pC3Q1WFNjhsZlizTVf5TpkVaWs49G_sZL"
 }
 
--- Webhook for BOTH Jester and Mari
 local MERCHANT_WEBHOOK = "https://discord.com/api/webhooks/1467851474397561018/-XyREI978MEsyhKqnhEtPyRAsd-hOcB1OQmVyjIZ0FyV758JFv79ZTe3qL9RY129mbm_"
 
 local PRIVATE_SERVER = "https://www.roblox.com/share?code=aad142168d2e0c419085cc0679eb2ef3&type=Server"
@@ -11,7 +10,7 @@ local PRIVATE_SERVER = "https://www.roblox.com/share?code=aad142168d2e0c419085cc
 local JESTER_ROLES = { "1467788391075545254" }
 local MARI_ROLES   = { "1467788352462913669" } 
 
-local VERSION = "DroidScope | Beta v2.1.1 (bytetwo ver)"
+local VERSION = "DroidScope | Beta v1.1.2 (bytetwo ver)"
 local DEFAULT_THUMB = "https://i.ibb.co/S7X9mR6X/image-041fa2.png"
 
 -- ================= SERVICES =================
@@ -20,16 +19,10 @@ local HttpService = game:GetService("HttpService")
 local TextChatService = game:GetService("TextChatService")
 local UserInputService = game:GetService("UserInputService")
 local VirtualUser = game:GetService("VirtualUser")
-local Lighting = game:GetService("Lighting") -- Needed for Shadow Kill
 local player = Players.LocalPlayer
 
 -- ================= HTTP =================
-local HttpRequest =
-	http and http.request
-	or http_request
-	or request
-	or (syn and syn.request)
-
+local HttpRequest = http and http.request or http_request or request or (syn and syn.request)
 assert(HttpRequest, "HTTP not supported")
 
 -- ================= STATE =================
@@ -37,25 +30,14 @@ local macroRunning = false
 local lastBiome = nil
 local sessionStart = 0
 local hourStart = 0
-
 local merchantCooldown = { Jester = 0, Mari = 0 }
 local MERCHANT_CD = 25
-
--- hourly stats
 local biomeStats = {}
 local totalBiomes = 0
 
--- ================= VPS LIGHTING BOOST =================
+-- ================= FPS BOOSTER =================
 local function boostFPS()
-    -- Sets Rendering to Lowest
 	settings().Rendering.QualityLevel = 1
-    
-    -- Kill Shadows and heavy Lighting effects
-    Lighting.GlobalShadows = false
-    Lighting.Technology = Enum.Technology.Compatibility
-    Lighting.FogEnd = 9e9
-    
-    -- Strip Material
 	for _, v in ipairs(game:GetDescendants()) do
 		if v:IsA("BasePart") and not v:IsA("MeshPart") then
 			v.Material = Enum.Material.SmoothPlastic
@@ -74,11 +56,9 @@ local BIOME_DATA = {
 	CORRUPTION = { color=0x800080, thumb="https://maxstellar.github.io/biome_thumb/CORRUPTION.png" },
 	NULL = { color=0x808080, thumb="https://maxstellar.github.io/biome_thumb/NULL.png" },
 	HEAVEN = { color=0xADD8E6, thumb="https://maxstellar.github.io/biome_thumb/HEAVEN.png" },
-
 	GLITCHED = { color=0xFFFF00, thumb="https://i.postimg.cc/mDzwFfX1/GLITCHED.png", everyone=true },
 	DREAMSPACE = { color=0xFF00FF, thumb="https://maxstellar.github.io/biome_thumb/DREAMSPACE.png", everyone=true },
 	CYBERSPACE = { color=0x00FFFF, thumb="https://raw.githubusercontent.com/cresqnt-sys/MultiScope/main/assets/cyberspace.png", everyone=true },
-
 	NORMAL = { never=true }
 }
 
@@ -95,7 +75,6 @@ local function getPlainUptime()
 	if hours > 0 or days > 0 then str = str .. hours .. "hr " end
 	if minutes > 0 or hours > 0 or days > 0 then str = str .. minutes .. "m " end
 	str = str .. seconds .. "s"
-	
 	return str
 end
 
@@ -112,21 +91,11 @@ local function sendWebhook(payload, customUrl)
 	end
 end
 
-local function rolePing(ids)
-	local t = {}
-	for _, id in ipairs(ids) do
-		table.insert(t, "<@&"..id..">")
-	end
-	return table.concat(t, " ")
-end
-
--- ================= STATUS =================
+-- ================= STATUS & BIOME =================
 local function sendStatus(started)
 	sendWebhook({
 		embeds = {{
-			title = started
-				and ":bar_chart: Status Update: DroidScope Started"
-				or ":bar_chart: Status Update: DroidScope Stopped",
+			title = started and ":bar_chart: Status Update: DroidScope Started" or ":bar_chart: Status Update: DroidScope Stopped",
 			color = 0x3498DB,
 			thumbnail = { url = DEFAULT_THUMB },
 			fields = {
@@ -138,7 +107,6 @@ local function sendStatus(started)
 	})
 end
 
--- ================= BIOME EMBED =================
 local function sendBiome(biome, data, state)
 	local now = os.time()
 	sendWebhook({
@@ -159,54 +127,19 @@ local function sendBiome(biome, data, state)
 	})
 end
 
--- ================= HOURLY REPORT =================
-local function sendHourlyStats()
-	if totalBiomes == 0 then return end
-
-	local lines = {}
-	for biome, count in pairs(biomeStats) do
-		local percent = math.floor((count / totalBiomes) * 1000) / 10
-		table.insert(lines, biome..": "..count.." ("..percent.."%)")
-	end
-
-	sendWebhook({
-		embeds = {{
-			title = "📊 Hourly Biome Report",
-			color = 0x1ABC9C,
-			thumbnail = { url = DEFAULT_THUMB },
-			description =
-				"**Uptime:** "..getPlainUptime().."\n" ..
-				"**Total Biomes:** "..totalBiomes.."\n\n" ..
-				table.concat(lines, "\n"),
-			footer = { text = VERSION }
-		}}
-	})
-
-	biomeStats = {}
-	totalBiomes = 0
-	hourStart = os.time()
-end
-
 -- ================= MERCHANT =================
 local function sendMerchant(name)
 	local now = os.time()
 	if now - merchantCooldown[name] < MERCHANT_CD then return end
 	merchantCooldown[name] = now
-
 	local title, color, ping, thumb
-
 	if name == "Jester" then
-		title = ":black_joker: Jester Has Arrived!"
-		color = 0xA352FF
-		ping = rolePing(JESTER_ROLES)
+		title = ":black_joker: Jester Has Arrived!"; color = 0xA352FF; ping = "<@&"..JESTER_ROLES[1]..">"
 		thumb = "https://keylens-website.web.app/merchants/Jester.png"
 	else
-		title = ":shopping_bags: Mari Has Arrived!"
-		color = 0xFF82AB
-		ping = rolePing(MARI_ROLES)
+		title = ":shopping_bags: Mari Has Arrived!"; color = 0xFF82AB; ping = "<@&"..MARI_ROLES[1]..">"
 		thumb = "https://keylens-website.web.app/merchants/Mari.png"
 	end
-
 	sendWebhook({
 		content = ping,
 		embeds = {{
@@ -224,7 +157,7 @@ local function sendMerchant(name)
 	}, MERCHANT_WEBHOOK)
 end
 
--- ================= BIOME DETECTION =================
+-- ================= DETECTION =================
 local function detectBiome()
 	if not macroRunning then return end
 	for _, v in ipairs(player.PlayerGui:GetDescendants()) do
@@ -238,8 +171,6 @@ local function detectBiome()
 				lastBiome = biome
 				if not data.never then
 					sendBiome(biome, data, "Started")
-					biomeStats[biome] = (biomeStats[biome] or 0) + 1
-					totalBiomes += 1
 				end
 			end
 		end
@@ -253,89 +184,45 @@ TextChatService.OnIncomingMessage = function(msg)
 	if t:find("mari") and t:find("arrived") then sendMerchant("Mari") end
 end
 
--- ================= LOOP =================
 task.spawn(function()
 	while true do
-		if macroRunning then
-			detectBiome()
-			if os.time() - hourStart >= 3600 then
-				sendHourlyStats()
-			end
-		end
+		if macroRunning then detectBiome() end
 		task.wait(1.5)
 	end
 end)
 
--- ================= ANTI AFK =================
-player.Idled:Connect(function()
-	VirtualUser:CaptureController()
-	VirtualUser:ClickButton2(Vector2.new())
-end)
+-- ANTI AFK
+player.Idled:Connect(function() VirtualUser:CaptureController(); VirtualUser:ClickButton2(Vector2.new()) end)
 
 -- ================= UI =================
-local gui = Instance.new("ScreenGui", player.PlayerGui)
-gui.ResetOnSpawn = false
-
+local gui = Instance.new("ScreenGui", player.PlayerGui); gui.ResetOnSpawn = false
 local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.fromScale(0.42,0.16)
-frame.Position = UDim2.fromScale(0.29,0.75)
-frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+frame.Size = UDim2.fromScale(0.42,0.16); frame.Position = UDim2.fromScale(0.29,0.75); frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0.15,0)
-
 local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.fromScale(1,0.35)
-title.BackgroundTransparency = 1
-title.Text = "DroidScope"
-title.TextScaled = true
-title.Font = Enum.Font.GothamBold
-title.TextColor3 = Color3.new(1,1,1)
+title.Size = UDim2.fromScale(1,0.35); title.BackgroundTransparency = 1; title.Text = "DroidScope"; title.TextScaled = true; title.Font = Enum.Font.GothamBold; title.TextColor3 = Color3.new(1,1,1)
 
 local function btn(text,pos,color,cb)
 	local b = Instance.new("TextButton", frame)
-	b.Size = UDim2.fromScale(0.45,0.4)
-	b.Position = pos
-	b.Text = text
-	b.TextScaled = true
-	b.Font = Enum.Font.GothamBold
-	b.BackgroundColor3 = color
-	b.TextColor3 = Color3.new(1,1,1)
-	Instance.new("UICorner", b).CornerRadius = UDim.new(0.2,0)
-	b.Activated:Connect(cb)
+	b.Size = UDim2.fromScale(0.45,0.4); b.Position = pos; b.Text = text; b.TextScaled = true; b.Font = Enum.Font.GothamBold; b.BackgroundColor3 = color; b.TextColor3 = Color3.new(1,1,1)
+	Instance.new("UICorner", b).CornerRadius = UDim.new(0.2,0); b.Activated:Connect(cb)
 end
 
 btn("START", UDim2.fromScale(0.03,0.5), Color3.fromRGB(46,204,113), function()
 	if macroRunning then return end
 	macroRunning = true
-	boostFPS() -- Applies Smooth Plastic + Shadow Kill
-	lastBiome = nil
-	sessionStart = os.time()
-	hourStart = sessionStart
-	biomeStats = {}
-	totalBiomes = 0
+	boostFPS()
+	sessionStart = os.time(); lastBiome = nil
 	sendStatus(true)
 end)
 
 btn("STOP", UDim2.fromScale(0.52,0.5), Color3.fromRGB(231,76,60), function()
 	if not macroRunning then return end
-	macroRunning = false
-	sendStatus(false)
+	macroRunning = false; sendStatus(false)
 end)
 
--- drag
+-- drag logic
 local dragging, dragStart, startPos
-frame.InputBegan:Connect(function(i)
-	if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-		dragging=true; dragStart=i.Position; startPos=frame.Position
-	end
-end)
-frame.InputChanged:Connect(function(i)
-	if dragging then
-		local d=i.Position-dragStart
-		frame.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+d.X,startPos.Y.Scale,startPos.Y.Offset+d.Y)
-	end
-end)
-UserInputService.InputEnded:Connect(function(i)
-	if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
-		dragging=false
-	end
-end)
+frame.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dragging=true; dragStart=i.Position; startPos=frame.Position end end)
+frame.InputChanged:Connect(function(i) if dragging then local d=i.Position-dragStart; frame.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+d.X,startPos.Y.Scale,startPos.Y.Offset+d.Y) end end)
+UserInputService.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then dragging=false end end)
