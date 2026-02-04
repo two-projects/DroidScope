@@ -3,8 +3,11 @@ local WEBHOOK_URLS = {
 	"https://discord.com/api/webhooks/1467670290971492373/epApIOFGz9F5An4yhUl_3sXHSW8dcEvj9D9pC3Q1WFNjhsZlizTVf5TpkVaWs49G_sZL"
 }
 
+-- Webhook for BOTH Jester and Mari
 local MERCHANT_WEBHOOK = "https://discord.com/api/webhooks/1467851474397561018/-XyREI978MEsyhKqnhEtPyRAsd-hOcB1OQmVyjIZ0FyV758JFv79ZTe3qL9RY129mbm_"
+
 local PRIVATE_SERVER = "https://www.roblox.com/share?code=aad142168d2e0c419085cc0679eb2ef3&type=Server"
+
 local JESTER_ROLES = { "1467788391075545254" }
 local MARI_ROLES   = { "1467788352462913669" } 
 
@@ -21,8 +24,14 @@ local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 local player = Players.LocalPlayer
 
--- ================= HTTP CHECK (SILENT) =================
-local HttpRequest = (http and http.request) or http_request or request or (syn and syn.request)
+-- ================= HTTP =================
+local HttpRequest =
+	http and http.request
+	or http_request
+	or request
+	or (syn and syn.request)
+
+assert(HttpRequest, "HTTP not supported")
 
 -- ================= STATE =================
 local macroRunning = false
@@ -37,12 +46,17 @@ local totalBiomes = 0
 -- ================= ULTRA FPS BOOSTER =================
 local function boostFPS()
     local decalsyeeted = true 
+    local w = Workspace
+    local l = Lighting
+    local t = w.Terrain
+
     pcall(function()
-        sethiddenproperty(Lighting,"Technology",2)
-        sethiddenproperty(Workspace.Terrain,"Decoration",false)
+        sethiddenproperty(l,"Technology",2)
+        sethiddenproperty(t,"Decoration",false)
     end)
-    Workspace.Terrain.WaterWaveSize = 0; Workspace.Terrain.WaterWaveSpeed = 0
-    Lighting.GlobalShadows = false; Lighting.FogEnd = 9e9; Lighting.Brightness = 0
+    
+    t.WaterWaveSize = 0; t.WaterWaveSpeed = 0; t.WaterReflectance = 0; t.WaterTransparency = 0
+    l.GlobalShadows = false; l.FogEnd = 9e9; l.Brightness = 0
     settings().Rendering.QualityLevel = "Level01"
 
     local function stripObject(v)
@@ -57,26 +71,10 @@ local function boostFPS()
             v.TextureID = "rbxassetid://10385902758728957"
         end
     end
-    for _, v in pairs(Workspace:GetDescendants()) do stripObject(v) end
-    Workspace.DescendantAdded:Connect(function(v) task.wait(); stripObject(v) end)
-end
 
--- ================= BIOME DATA =================
-local BIOME_DATA = {
-	WINDY = { color=0xFFFFFF, thumb="https://maxstellar.github.io/biome_thumb/WINDY.png" },
-	RAINY = { color=0x55925F, thumb="https://maxstellar.github.io/biome_thumb/RAINY.png" },
-	SNOWY = { color=0xFFFFFF, thumb="https://maxstellar.github.io/biome_thumb/SNOWY.png" },
-	["SAND STORM"] = { color=0xFFA500, thumb="https://maxstellar.github.io/biome_thumb/SAND%20STORM.png" },
-	HELL = { color=0xFB4F29, thumb="https://maxstellar.github.io/biome_thumb/HELL.png" },
-	STARFALL = { color=0xFFFFFF, thumb="https://maxstellar.github.io/biome_thumb/STARFALL.png" },
-	CORRUPTION = { color=0x800080, thumb="https://maxstellar.github.io/biome_thumb/CORRUPTION.png" },
-	NULL = { color=0x808080, thumb="https://maxstellar.github.io/biome_thumb/NULL.png" },
-	HEAVEN = { color=0xADD8E6, thumb="https://maxstellar.github.io/biome_thumb/HEAVEN.png" },
-	GLITCHED = { color=0xFFFF00, thumb="https://i.postimg.cc/mDzwFfX1/GLITCHED.png", everyone=true },
-	DREAMSPACE = { color=0xFF00FF, thumb="https://maxstellar.github.io/biome_thumb/DREAMSPACE.png", everyone=true },
-	CYBERSPACE = { color=0x00FFFF, thumb="https://raw.githubusercontent.com/cresqnt-sys/MultiScope/main/assets/cyberspace.png", everyone=true },
-	NORMAL = { never=true }
-}
+    for _, v in pairs(w:GetDescendants()) do stripObject(v) end
+    w.DescendantAdded:Connect(function(v) task.wait(); stripObject(v) end)
+end
 
 -- ================= UTILS =================
 local function getPlainUptime()
@@ -87,10 +85,9 @@ local function getPlainUptime()
 end
 
 local function sendWebhook(payload, customUrl)
-	if not HttpRequest then warn("DroidScope: No HTTP Support") return end
 	local urls = customUrl and {customUrl} or WEBHOOK_URLS
 	for _, url in ipairs(urls) do
-		pcall(function() HttpRequest({Url = url, Method = "POST", Headers = {["Content-Type"]="application/json"}, Body = HttpService:JSONEncode(payload)}) end)
+		HttpRequest({Url = url, Method = "POST", Headers = {["Content-Type"]="application/json"}, Body = HttpService:JSONEncode(payload)})
 	end
 end
 
@@ -100,48 +97,21 @@ local function rolePing(ids)
 	return table.concat(t, " ")
 end
 
--- ================= WEBHOOK EMBEDS =================
-local function sendStatus(started)
-	sendWebhook({embeds={{title=started and ":bar_chart: Status Update: DroidScope Started" or ":bar_chart: Status Update: DroidScope Stopped", color=0x3498DB, thumbnail={url=DEFAULT_THUMB}, fields={{name="Session Start", value="<t:"..sessionStart..":F>", inline=false}, {name="Uptime", value=getPlainUptime(), inline=false}}, footer={text=VERSION}}}})
-end
-
-local function sendBiome(biome, data, state)
-	local now = os.time()
-	sendWebhook({content=data.everyone and "@everyone" or nil, embeds={{title="Biome "..state.." - "..biome, color=data.color, thumbnail={url=data.thumb or DEFAULT_THUMB}, fields={{name="Account", value=player.Name, inline=false}, {name="Time", value="<t:"..now..":F> (<t:"..now..":R>)", inline=false}, {name="Uptime", value=getPlainUptime(), inline=false}, {name="Private Server", value=PRIVATE_SERVER, inline=false}, {name="Status", value=state, inline=false}}, footer={text=VERSION}}}})
-end
-
+-- ================= MERCHANT =================
 local function sendMerchant(name)
 	local now = os.time()
 	if now - merchantCooldown[name] < MERCHANT_CD then return end
 	merchantCooldown[name] = now
-	local isJester = (name == "Jester")
-	sendWebhook({
-		content = isJester and rolePing(JESTER_ROLES) or rolePing(MARI_ROLES),
-		embeds = {{
-			title = (isJester and ":black_joker: Jester" or ":shopping_bags: Mari") .. " Has Arrived!",
-			color = isJester and 0xA352FF or 0xFF82AB,
-			thumbnail = { url = isJester and "https://cresqnt.com/api/images/JESTER.png" or "https://cresqnt.com/api/images/MARI.png" },
-			fields = {{name="Account", value=player.Name, inline=false}, {name="Time", value="<t:"..now..":F>"}, {name="Private Server", value=PRIVATE_SERVER, inline=false}},
-			footer = { text = VERSION }
-		}}
-	}, MERCHANT_WEBHOOK)
+	local title, color, ping, thumb = "", 0, "", ""
+	if name == "Jester" then
+		title = ":black_joker: Jester Has Arrived!"; color = 0xA352FF; ping = rolePing(JESTER_ROLES); thumb = "https://cresqnt.com/api/images/JESTER.png"
+	else
+		title = ":shopping_bags: Mari Has Arrived!"; color = 0xFF82AB; ping = rolePing(MARI_ROLES); thumb = "https://cresqnt.com/api/images/MARI.png"
+	end
+	sendWebhook({content=ping, embeds={{title=title, color=color, thumbnail={url=thumb}, fields={{name="Account", value=player.Name, inline=false}, {name="Time", value="<t:"..now..":F> (<t:"..now..":R>)", inline=false}, {name="Uptime", value=getPlainUptime(), inline=false}, {name="Private Server", value=PRIVATE_SERVER, inline=false}}, footer={text=VERSION}}}}, MERCHANT_WEBHOOK)
 end
 
 -- ================= DETECTION =================
-local function detectBiome()
-	if not macroRunning then return end
-	for _, v in ipairs(player.PlayerGui:GetDescendants()) do
-		if v:IsA("TextLabel") then
-			local biome = v.Text:match("^%[ ([%w%s]+) %]$")
-			if biome and BIOME_DATA[biome] and biome ~= lastBiome then
-				if lastBiome and BIOME_DATA[lastBiome] and not BIOME_DATA[lastBiome].never then sendBiome(lastBiome, BIOME_DATA[lastBiome], "Ended") end
-				lastBiome = biome
-				if not BIOME_DATA[lastBiome].never then sendBiome(biome, BIOME_DATA[lastBiome], "Started"); biomeStats[biome] = (biomeStats[biome] or 0) + 1; totalBiomes += 1 end
-			end
-		end
-	end
-end
-
 TextChatService.OnIncomingMessage = function(msg)
 	if not macroRunning or not msg.Text then return end
 	local t = msg.Text:lower()
@@ -149,52 +119,42 @@ TextChatService.OnIncomingMessage = function(msg)
 	if t:find("mari") and t:find("arrived") then sendMerchant("Mari") end
 end
 
-task.spawn(function()
-	while true do
-		if macroRunning then detectBiome() end
-		task.wait(1.5)
-	end
-end)
-
 player.Idled:Connect(function() VirtualUser:CaptureController(); VirtualUser:ClickButton2(Vector2.new()) end)
 
--- ================= UI (FORCED PARENT) =================
-local gui = Instance.new("ScreenGui")
-gui.Name = "DroidScopeUI"
-gui.ResetOnSpawn = false
-gui.Parent = player:WaitForChild("PlayerGui")
-
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.fromScale(0.42,0.16)
-frame.Position = UDim2.fromScale(0.29,0.75)
-frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+-- ================= UI =================
+local gui = Instance.new("ScreenGui", player.PlayerGui); gui.ResetOnSpawn = false
+local frame = Instance.new("Frame", gui); frame.Size = UDim2.fromScale(0.42,0.16); frame.Position = UDim2.fromScale(0.29,0.75); frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0.15,0)
-
-local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.fromScale(1,0.35); title.BackgroundTransparency = 1; title.Text = "DroidScope"
-title.TextScaled = true; title.Font = Enum.Font.GothamBold; title.TextColor3 = Color3.new(1,1,1)
+local title = Instance.new("TextLabel", frame); title.Size = UDim2.fromScale(1,0.35); title.BackgroundTransparency = 1; title.Text = "DroidScope"; title.TextScaled = true; title.Font = Enum.Font.GothamBold; title.TextColor3 = Color3.new(1,1,1)
 
 local function btn(text,pos,color,cb)
-	local b = Instance.new("TextButton", frame)
-	b.Size = UDim2.fromScale(0.45,0.4); b.Position = pos; b.Text = text
-	b.TextScaled = true; b.Font = Enum.Font.GothamBold; b.BackgroundColor3 = color; b.TextColor3 = Color3.new(1,1,1)
-	Instance.new("UICorner", b).CornerRadius = UDim.new(0.2,0)
-	b.Activated:Connect(cb)
+	local b = Instance.new("TextButton", frame); b.Size = UDim2.fromScale(0.45,0.4); b.Position = pos; b.Text = text; b.TextScaled = true; b.Font = Enum.Font.GothamBold; b.BackgroundColor3 = color; b.TextColor3 = Color3.new(1,1,1)
+	Instance.new("UICorner", b).CornerRadius = UDim.new(0.2,0); b.Activated:Connect(cb)
 end
 
 btn("START", UDim2.fromScale(0.03,0.5), Color3.fromRGB(46,204,113), function()
 	if macroRunning then return end
-	macroRunning = true; boostFPS(); lastBiome = nil; sessionStart = os.time(); hourStart = sessionStart; sendStatus(true)
+	macroRunning = true
+	boostFPS()
+	sessionStart = os.time(); lastBiome = nil
+	sendWebhook({
+        embeds = {{
+            title = ":bar_chart: DroidScope Started", 
+            color = 0x3498DB, 
+            fields = {
+                { name = "Session Start", value = "<t:"..sessionStart..":F>", inline = false },
+                { name = "Uptime", value = "0s", inline = false }
+            }, 
+            footer = { text = VERSION }
+        }}
+    })
 end)
 
 btn("STOP", UDim2.fromScale(0.52,0.5), Color3.fromRGB(231,76,60), function()
-	macroRunning = false; sendStatus(false)
+	macroRunning = false
 end)
 
--- Drag Logic
 local dragging, dragStart, startPos
 frame.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dragging=true; dragStart=i.Position; startPos=frame.Position end end)
 frame.InputChanged:Connect(function(i) if dragging then local d=i.Position-dragStart; frame.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+d.X,startPos.Y.Scale,startPos.Y.Offset+d.Y) end end)
 UserInputService.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then dragging=false end end)
-
-print("DroidScope v2.1.4 Loaded")
