@@ -10,7 +10,7 @@ local PRIVATE_SERVER = "https://www.roblox.com/share?code=aad142168d2e0c419085cc
 local JESTER_ROLES = { "1467788391075545254" }
 local MARI_ROLES   = { "1467788352462913669" } 
 
-local VERSION = "DroidScope | Beta v1.1.2 (bytetwo ver)"
+local VERSION = "DroidScope | Beta v2.1.2 (bytetwo ver)"
 local DEFAULT_THUMB = "https://i.ibb.co/S7X9mR6X/image-041fa2.png"
 
 -- ================= SERVICES =================
