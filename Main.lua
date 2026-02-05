@@ -122,7 +122,8 @@ local function detectBiome()
 				end
 				lastBiome = biome
 				if not data.never then
-					sendWebhook({content=data.everyone and "@everyone" or nil, embeds={{title="Biome Started - "..biome, color=data.color, thumbnail={url=data.thumb or DEFAULT_THUMB}, fields={{name="Account", value=player.Name, inline=false}, {name="Time", value="<t:"..os.time()..":F>", inline=false}, {name="Private Server", value=PRIVATE_SERVER, inline=false}}, footer={text=VERSION}}}})
+					local now = os.time()
+					sendWebhook({content=data.everyone and "@everyone" or nil, embeds={{title="Biome Started - "..biome, color=data.color, thumbnail={url=data.thumb or DEFAULT_THUMB}, fields={{name="Account", value=player.Name, inline=false}, {name="Time", value="<t:"..now..":F> (<t:"..now..":R>)", inline=false}, {name="Private Server", value=PRIVATE_SERVER, inline=false}}, footer={text=VERSION}}}})
 				end
 			end
 		end
@@ -147,7 +148,7 @@ TextChatService.OnIncomingMessage = function(msg)
                 thumbnail = {url = img}, 
                 fields = {
                     { name = "Account", value = player.Name, inline = false },
-                    { name = "Time", value = "<t:"..now..":F>", inline = false },
+                    { name = "Time", value = "<t:"..now..":F> (<t:"..now..":R>)", inline = false },
                     { name = "Uptime", value = getPlainUptime(), inline = false },
                     { name = "Private Server", value = PRIVATE_SERVER, inline = false }
                 },
