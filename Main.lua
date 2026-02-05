@@ -174,14 +174,14 @@ TextChatService.OnIncomingMessage = function(msg)
 		merchantCooldown[name] = now
 		
 		-- Merchant Specific Settings
-		local emoji = name == "Jester" and "🃏" or "🛍️"
+		local shortcode = name == "Jester" and ":black_joker:" or ":shopping_bags:"
 		local img = name == "Jester" and "https://i.ibb.co/DDQTH1zj/image.png" or "https://i.ibb.co/QFVGQ4r3/image.png"
 		local role = name == "Jester" and JESTER_ROLES[1] or MARI_ROLES[1]
 
 		sendWebhook({
             content = "<@&"..role..">", 
             embeds = {{
-                title = emoji .. " " .. name .. " Has Arrived!", 
+                title = shortcode .. " " .. name .. " Has Arrived!", 
                 color = name == "Jester" and 0xA352FF or 0xFF82AB, 
                 thumbnail = {url = img}, 
                 fields = {
