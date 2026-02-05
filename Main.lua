@@ -130,8 +130,13 @@ local function detectBiome()
 	end
 end
 
+-- ================= CHAT LISTENER (SPOOF PROOF) =================
 TextChatService.OnIncomingMessage = function(msg)
 	if not macroRunning or not msg.Text then return end
+    
+    -- BLOCK PLAYER SPOOFING: If the message has a TextSource (a player), ignore it.
+    if msg.TextSource ~= nil then return end 
+
 	local t = msg.Text:lower()
 	local name = t:find("jester") and "Jester" or t:find("mari") and "Mari"
 	if name and t:find("arrived") then
