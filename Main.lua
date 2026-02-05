@@ -9,16 +9,6 @@ local MARI_ROLES   = { "1467788352462913669" }
 local VERSION = "DroidScope | Beta v2.1.4 (bytetwo version)"
 local DEFAULT_THUMB = "https://i.ibb.co/S7X9mR6X/image-041fa2.png"
 
--- ================= STATE & STATS =================
-local macroRunning = false
-local lastBiome = nil
-local sessionStart = 0
-local hourStart = 0
-local biomeCounts = {} 
-local totalSpecialBiomesInHour = 0
-local merchantCooldown = { Jester = 0, Mari = 0 }
-local MERCHANT_CD = 25
-
 -- ================= SERVICES =================
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
@@ -29,6 +19,64 @@ local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
 local player = Players.LocalPlayer
 local HttpRequest = http and http.request or http_request or request or (syn and syn.request)
+
+-- ================= ULTRA FPS BOOSTER (FIXED) =================
+local function boostFPS()
+    local decalsyeeted = true 
+    local w = Workspace
+    local l = Lighting
+    local t = w.Terrain
+
+    pcall(function()
+        sethiddenproperty(l,"Technology",2)
+        sethiddenproperty(t,"Decoration",false)
+    end)
+    
+    t.WaterWaveSize = 0; t.WaterWaveSpeed = 0; t.WaterReflectance = 0; t.WaterTransparency = 0
+    l.GlobalShadows = false; l.FogEnd = 9e9; l.Brightness = 0
+    settings().Rendering.QualityLevel = "Level01"
+
+    local function stripObject(v)
+        if v:IsA("BasePart") and not v:IsA("MeshPart") then
+            v.Material = "Plastic"; v.Reflectance = 0
+        elseif (v:IsA("Decal") or v:IsA("Texture")) and decalsyeeted then
+            v.Transparency = 1
+        elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
+            v.Lifetime = NumberRange.new(0)
+        elseif v:IsA("Explosion") then
+            v.BlastPressure = 1; v.BlastRadius = 1
+        elseif v:IsA("Fire") or v:IsA("SpotLight") or v:IsA("Smoke") or v:IsA("Sparkles") then
+            v.Enabled = false
+        elseif v:IsA("MeshPart") and decalsyeeted then
+            v.Material = "Plastic"; v.Reflectance = 0
+            v.TextureID = "rbxassetid://10385902758728957"
+        elseif v:IsA("SpecialMesh") and decalsyeeted then
+            v.TextureId = 0
+        elseif v:IsA("ShirtGraphic") and decalsyeeted then
+            v.Graphic = 0
+        elseif (v:IsA("Shirt") or v:IsA("Pants")) and decalsyeeted then
+            v[v.ClassName.."Template"] = 0
+        end
+    end
+
+    for _, v in pairs(w:GetDescendants()) do stripObject(v) end
+    for _, e in pairs(l:GetChildren()) do
+        if e:IsA("BlurEffect") or e:IsA("SunRaysEffect") or e:IsA("ColorCorrectionEffect") or e:IsA("BloomEffect") or e:IsA("DepthOfFieldEffect") then
+            e.Enabled = false
+        end
+    end
+    w.DescendantAdded:Connect(function(v) task.wait(); stripObject(v) end)
+end
+
+-- ================= STATE & STATS =================
+local macroRunning = false
+local lastBiome = nil
+local sessionStart = 0
+local hourStart = 0
+local biomeCounts = {} 
+local totalSpecialBiomesInHour = 0
+local merchantCooldown = { Jester = 0, Mari = 0 }
+local MERCHANT_CD = 25
 
 local function getPlainUptime()
 	local diff = os.time() - sessionStart
@@ -69,17 +117,13 @@ local function detectBiome()
 			local biome = v.Text:match("^%[ ([%w%s]+) %]$")
 			local data = BIOME_DATA[biome]
 			if biome and data and biome ~= lastBiome then
-				-- End previous biome webhook
 				if lastBiome and BIOME_DATA[lastBiome] and not BIOME_DATA[lastBiome].never then
 					sendWebhook({embeds={{title="Biome Ended - "..lastBiome, color=BIOME_DATA[lastBiome].color, thumbnail={url=BIOME_DATA[lastBiome].thumb or DEFAULT_THUMB}, fields={{name="Account", value=player.Name, inline=false}, {name="Uptime", value=getPlainUptime(), inline=false}}, footer={text=VERSION}}}})
 				end
-				
 				lastBiome = biome
-				-- ONLY track and notify if it's NOT "NORMAL"
 				if not data.never then
 					biomeCounts[biome] = (biomeCounts[biome] or 0) + 1
 					totalSpecialBiomesInHour = totalSpecialBiomesInHour + 1
-
 					local now = os.time()
 					sendWebhook({content=data.everyone and "@everyone" or nil, embeds={{title="Biome Started - "..biome, color=data.color, thumbnail={url=data.thumb or DEFAULT_THUMB}, fields={{name="Account", value=player.Name, inline=false}, {name="Time", value="<t:"..now..":F> (<t:"..now..":R>)", inline=false}, {name="Private Server", value=PRIVATE_SERVER, inline=false}}, footer={text=VERSION}}}})
 				end
@@ -88,7 +132,7 @@ local function detectBiome()
 	end
 end
 
--- ================= CHAT LISTENER (SPOOF PROOF) =================
+-- ================= CHAT LISTENER =================
 TextChatService.OnIncomingMessage = function(msg)
 	if not macroRunning or not msg.Text then return end
     if msg.TextSource ~= nil then return end 
@@ -126,7 +170,6 @@ task.spawn(function()
 			detectBiome()
 			if os.time() - hourStart >= 3600 then
 				hourStart = os.time()
-                
                 local report = ""
                 if totalSpecialBiomesInHour > 0 then
                     for bName, count in pairs(biomeCounts) do
@@ -136,27 +179,14 @@ task.spawn(function()
                 else
                     report = "No special biomes detected this hour."
                 end
-
-				sendWebhook({embeds={{
-                    title=":bar_chart: Hourly Biome Statistics", 
-                    color=0x3498DB, 
-                    description = report,
-                    fields={
-                        {name="Session Start", value="<t:"..sessionStart..":F>", inline=true},
-                        {name="Uptime", value=getPlainUptime(), inline=true}
-                    }, 
-                    footer={text=VERSION}
-                }}})
-                
-                biomeCounts = {}
-                totalSpecialBiomesInHour = 0
+				sendWebhook({embeds={{title=":bar_chart: Hourly Biome Statistics", color=0x3498DB, description = report, fields={{name="Session Start", value="<t:"..sessionStart..":F>", inline=true}, {name="Uptime", value=getPlainUptime(), inline=true}}, footer={text=VERSION}}}})
+                biomeCounts = {}; totalSpecialBiomesInHour = 0
 			end
 		end
 		task.wait(1.5)
 	end
 end)
 
--- AFK Protection
 player.Idled:Connect(function() VirtualUser:CaptureController(); VirtualUser:ClickButton2(Vector2.new()) end)
 
 -- ================= UI =================
@@ -173,6 +203,7 @@ end
 btn("START", UDim2.fromScale(0.03,0.5), Color3.fromRGB(46,204,113), function()
 	if macroRunning then return end
 	macroRunning = true
+    boostFPS() -- RESTORED FPS BOOSTER CALL
 	sessionStart = os.time(); hourStart = sessionStart; lastBiome = nil; biomeCounts = {}; totalSpecialBiomesInHour = 0
 	sendWebhook({embeds={{title=":bar_chart: DroidScope Started", color=0x3498DB, fields={{name="Session Start", value="<t:"..sessionStart..":F>", inline=false}, {name="Uptime", value="0s", inline=false}}, footer={text=VERSION}}}})
 end)
