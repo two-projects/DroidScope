@@ -31,31 +31,23 @@ local function boostFPS()
         sethiddenproperty(t,"Decoration",false)
     end)
     
-    t.WaterWaveSize = 0
-    t.WaterWaveSpeed = 0
-    t.WaterReflectance = 0
-    t.WaterTransparency = 0
-    l.GlobalShadows = false
-    l.FogEnd = 9e9
-    l.Brightness = 0
+    t.WaterWaveSize = 0; t.WaterWaveSpeed = 0; t.WaterReflectance = 0; t.WaterTransparency = 0
+    l.GlobalShadows = false; l.FogEnd = 9e9; l.Brightness = 0
     settings().Rendering.QualityLevel = "Level01"
 
     local function stripObject(v)
         if v:IsA("BasePart") and not v:IsA("MeshPart") then
-            v.Material = "Plastic"
-            v.Reflectance = 0
+            v.Material = "Plastic"; v.Reflectance = 0
         elseif (v:IsA("Decal") or v:IsA("Texture")) and decalsyeeted then
             v.Transparency = 1
         elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
             v.Lifetime = NumberRange.new(0)
         elseif v:IsA("Explosion") then
-            v.BlastPressure = 1
-            v.BlastRadius = 1
+            v.BlastPressure = 1; v.BlastRadius = 1
         elseif v:IsA("Fire") or v:IsA("SpotLight") or v:IsA("Smoke") or v:IsA("Sparkles") then
             v.Enabled = false
         elseif v:IsA("MeshPart") and decalsyeeted then
-            v.Material = "Plastic"
-            v.Reflectance = 0
+            v.Material = "Plastic"; v.Reflectance = 0
             v.TextureID = "rbxassetid://10385902758728957"
         elseif v:IsA("SpecialMesh") and decalsyeeted then
             v.TextureId = 0
@@ -72,11 +64,7 @@ local function boostFPS()
             e.Enabled = false
         end
     end
-
-    w.DescendantAdded:Connect(function(v)
-        task.wait()
-        stripObject(v)
-    end)
+    w.DescendantAdded:Connect(function(v) task.wait(); stripObject(v) end)
 end
 
 -- ================= STATE & UTILS =================
@@ -91,10 +79,8 @@ local HttpRequest = http and http.request or http_request or request or (syn and
 
 local function getPlainUptime()
 	local diff = os.time() - sessionStart
-	local d = math.floor(diff / 86400)
-	local h = math.floor((diff % 86400) / 3600)
-	local m = math.floor((diff % 3600) / 60)
-	local s = diff % 60
+	local d = math.floor(diff / 86400); local h = math.floor((diff % 86400) / 3600)
+	local m = math.floor((diff % 3600) / 60); local s = diff % 60
 	return string.format("%s%s%s%ss", d>0 and d.."d " or "", (h>0 or d>0) and h.."hr " or "", (m>0 or h>0 or d>0) and m.."m " or "", s)
 end
 
@@ -102,7 +88,7 @@ end
 local function sendWebhook(payload, customUrl)
 	local urls = customUrl and {customUrl} or WEBHOOK_URLS
 	for _, url in ipairs(urls) do
-		HttpRequest({Url = url, Method = "POST", Headers = {["Content-Type"]="application/json"}, Body = HttpService:JSONEncode(payload)})
+		pcall(function() HttpRequest({Url = url, Method = "POST", Headers = {["Content-Type"]="application/json"}, Body = HttpService:JSONEncode(payload)}) end)
 	end
 end
 
@@ -123,27 +109,6 @@ local BIOME_DATA = {
 	NORMAL = { never=true }
 }
 
--- ================= BIOME EMBED =================
-local function sendBiomeEmbed(biome, data, state)
-    local now = os.time()
-    sendWebhook({
-        content = data.everyone and "@everyone" or nil,
-        embeds = {{
-            title = "Biome " .. state .. " - " .. biome,
-            color = data.color,
-            thumbnail = { url = data.thumb or DEFAULT_THUMB },
-            fields = {
-                { name = "Account", value = player.Name, inline = false },
-                { name = "Time", value = "<t:"..now..":F> (<t:"..now..":R>)", inline = false },
-                { name = "Uptime", value = getPlainUptime(), inline = false },
-                { name = "Private Server", value = PRIVATE_SERVER, inline = false },
-                { name = "Status", value = state, inline = false }
-            },
-            footer = { text = VERSION }
-        }}
-    })
-end
-
 -- ================= DETECTION =================
 local function detectBiome()
 	if not macroRunning then return end
@@ -153,11 +118,11 @@ local function detectBiome()
 			local data = BIOME_DATA[biome]
 			if biome and data and biome ~= lastBiome then
 				if lastBiome and BIOME_DATA[lastBiome] and not BIOME_DATA[lastBiome].never then
-					sendBiomeEmbed(lastBiome, BIOME_DATA[lastBiome], "Ended")
+					sendWebhook({embeds={{title="Biome Ended - "..lastBiome, color=BIOME_DATA[lastBiome].color, thumbnail={url=BIOME_DATA[lastBiome].thumb or DEFAULT_THUMB}, fields={{name="Account", value=player.Name, inline=false}, {name="Uptime", value=getPlainUptime(), inline=false}}, footer={text=VERSION}}}})
 				end
 				lastBiome = biome
 				if not data.never then
-					sendBiomeEmbed(biome, data, "Started")
+					sendWebhook({content=data.everyone and "@everyone" or nil, embeds={{title="Biome Started - "..biome, color=data.color, thumbnail={url=data.thumb or DEFAULT_THUMB}, fields={{name="Account", value=player.Name, inline=false}, {name="Time", value="<t:"..os.time()..":F>", inline=false}, {name="Private Server", value=PRIVATE_SERVER, inline=false}}, footer={text=VERSION}}}})
 				end
 			end
 		end
@@ -172,14 +137,10 @@ TextChatService.OnIncomingMessage = function(msg)
 		local now = os.time()
 		if now - merchantCooldown[name] < MERCHANT_CD then return end
 		merchantCooldown[name] = now
-		
-		-- Merchant Specific Settings
 		local shortcode = name == "Jester" and ":black_joker:" or ":shopping_bags:"
 		local img = name == "Jester" and "https://i.ibb.co/DDQTH1zj/image.png" or "https://i.ibb.co/QFVGQ4r3/image.png"
-		local role = name == "Jester" and JESTER_ROLES[1] or MARI_ROLES[1]
-
 		sendWebhook({
-            content = "<@&"..role..">", 
+            content = name=="Jester" and "<@&"..JESTER_ROLES[1]..">" or "<@&"..MARI_ROLES[1]..">", 
             embeds = {{
                 title = shortcode .. " " .. name .. " Has Arrived!", 
                 color = name == "Jester" and 0xA352FF or 0xFF82AB, 
@@ -196,7 +157,21 @@ TextChatService.OnIncomingMessage = function(msg)
 	end
 end
 
-task.spawn(function() while true do if macroRunning then detectBiome() end task.wait(1.5) end end)
+-- ================= MAIN LOOP =================
+task.spawn(function()
+	while true do
+		if macroRunning then
+			detectBiome()
+			-- OLD HOURLY UPDATE LOGIC
+			if os.time() - hourStart >= 3600 then
+				hourStart = os.time()
+				sendWebhook({embeds={{title=":bar_chart: Hourly Status Update", color=0x3498DB, fields={{name="Session Start", value="<t:"..sessionStart..":F>", inline=false}, {name="Uptime", value=getPlainUptime(), inline=false}}, footer={text=VERSION}}}})
+			end
+		end
+		task.wait(1.5)
+	end
+end)
+
 player.Idled:Connect(function() VirtualUser:CaptureController(); VirtualUser:ClickButton2(Vector2.new()) end)
 
 -- ================= UI =================
@@ -214,18 +189,8 @@ btn("START", UDim2.fromScale(0.03,0.5), Color3.fromRGB(46,204,113), function()
 	if macroRunning then return end
 	macroRunning = true
 	boostFPS()
-	sessionStart = os.time(); lastBiome = nil
-	sendWebhook({
-        embeds = {{
-            title = ":bar_chart: DroidScope Started", 
-            color = 0x3498DB, 
-            fields = {
-                { name = "Session Start", value = "<t:"..sessionStart..":F>", inline = false },
-                { name = "Uptime", value = "0s", inline = false }
-            }, 
-            footer = { text = VERSION }
-        }}
-    })
+	sessionStart = os.time(); hourStart = sessionStart; lastBiome = nil
+	sendWebhook({embeds={{title=":bar_chart: DroidScope Started", color=0x3498DB, fields={{name="Session Start", value="<t:"..sessionStart..":F>", inline=false}, {name="Uptime", value="0s", inline=false}}, footer={text=VERSION}}}})
 end)
 
 btn("STOP", UDim2.fromScale(0.52,0.5), Color3.fromRGB(231,76,60), function()
