@@ -6,7 +6,7 @@ local MERCHANT_WEBHOOK = "https://discord.com/api/webhooks/1467851474397561018/-
 local PRIVATE_SERVER = "https://www.roblox.com/share?code=aad142168d2e0c419085cc0679eb2ef3&type=Server"
 local JESTER_ROLES = { "1467788391075545254" }
 local MARI_ROLES   = { "1467788352462913669" } 
-local VERSION = "DroidScope | Beta v2.1.4 (bytetwo version)"
+local VERSION = "DroidScope | Beta v2.1.5 (AFK FIXED)"
 local DEFAULT_THUMB = "https://i.ibb.co/S7X9mR6X/image-041fa2.png"
 
 -- ================= SERVICES =================
@@ -20,22 +20,28 @@ local Workspace = game:GetService("Workspace")
 local player = Players.LocalPlayer
 local HttpRequest = http and http.request or http_request or request or (syn and syn.request)
 
--- ================= ULTRA FPS BOOSTER (FIXED) =================
+-- ================= ANTI-AFK (RESTORED & STRENGTHENED) =================
+player.Idled:Connect(function()
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+    VirtualUser:Button2Down(Vector2.new(0,0), Workspace.CurrentCamera.CFrame)
+    task.wait(0.1)
+    VirtualUser:Button2Up(Vector2.new(0,0), Workspace.CurrentCamera.CFrame)
+end)
+
+-- ================= ULTRA FPS BOOSTER =================
 local function boostFPS()
     local decalsyeeted = true 
     local w = Workspace
     local l = Lighting
     local t = w.Terrain
-
     pcall(function()
         sethiddenproperty(l,"Technology",2)
         sethiddenproperty(t,"Decoration",false)
     end)
-    
     t.WaterWaveSize = 0; t.WaterWaveSpeed = 0; t.WaterReflectance = 0; t.WaterTransparency = 0
     l.GlobalShadows = false; l.FogEnd = 9e9; l.Brightness = 0
     settings().Rendering.QualityLevel = "Level01"
-
     local function stripObject(v)
         if v:IsA("BasePart") and not v:IsA("MeshPart") then
             v.Material = "Plastic"; v.Reflectance = 0
@@ -43,28 +49,12 @@ local function boostFPS()
             v.Transparency = 1
         elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
             v.Lifetime = NumberRange.new(0)
-        elseif v:IsA("Explosion") then
-            v.BlastPressure = 1; v.BlastRadius = 1
-        elseif v:IsA("Fire") or v:IsA("SpotLight") or v:IsA("Smoke") or v:IsA("Sparkles") then
-            v.Enabled = false
         elseif v:IsA("MeshPart") and decalsyeeted then
             v.Material = "Plastic"; v.Reflectance = 0
             v.TextureID = "rbxassetid://10385902758728957"
-        elseif v:IsA("SpecialMesh") and decalsyeeted then
-            v.TextureId = 0
-        elseif v:IsA("ShirtGraphic") and decalsyeeted then
-            v.Graphic = 0
-        elseif (v:IsA("Shirt") or v:IsA("Pants")) and decalsyeeted then
-            v[v.ClassName.."Template"] = 0
         end
     end
-
     for _, v in pairs(w:GetDescendants()) do stripObject(v) end
-    for _, e in pairs(l:GetChildren()) do
-        if e:IsA("BlurEffect") or e:IsA("SunRaysEffect") or e:IsA("ColorCorrectionEffect") or e:IsA("BloomEffect") or e:IsA("DepthOfFieldEffect") then
-            e.Enabled = false
-        end
-    end
     w.DescendantAdded:Connect(function(v) task.wait(); stripObject(v) end)
 end
 
@@ -132,7 +122,7 @@ local function detectBiome()
 	end
 end
 
--- ================= CHAT LISTENER =================
+-- ================= CHAT LISTENER (SPOOF PROOF) =================
 TextChatService.OnIncomingMessage = function(msg)
 	if not macroRunning or not msg.Text then return end
     if msg.TextSource ~= nil then return end 
@@ -187,8 +177,6 @@ task.spawn(function()
 	end
 end)
 
-player.Idled:Connect(function() VirtualUser:CaptureController(); VirtualUser:ClickButton2(Vector2.new()) end)
-
 -- ================= UI =================
 local gui = Instance.new("ScreenGui", player.PlayerGui); gui.ResetOnSpawn = false
 local frame = Instance.new("Frame", gui); frame.Size = UDim2.fromScale(0.42,0.16); frame.Position = UDim2.fromScale(0.29,0.75); frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
@@ -203,7 +191,7 @@ end
 btn("START", UDim2.fromScale(0.03,0.5), Color3.fromRGB(46,204,113), function()
 	if macroRunning then return end
 	macroRunning = true
-    boostFPS() -- RESTORED FPS BOOSTER CALL
+    boostFPS()
 	sessionStart = os.time(); hourStart = sessionStart; lastBiome = nil; biomeCounts = {}; totalSpecialBiomesInHour = 0
 	sendWebhook({embeds={{title=":bar_chart: DroidScope Started", color=0x3498DB, fields={{name="Session Start", value="<t:"..sessionStart..":F>", inline=false}, {name="Uptime", value="0s", inline=false}}, footer={text=VERSION}}}})
 end)
@@ -212,6 +200,7 @@ btn("STOP", UDim2.fromScale(0.52,0.5), Color3.fromRGB(231,76,60), function()
 	macroRunning = false
 end)
 
+-- Draggable
 local dragging, dragStart, startPos
 frame.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dragging=true; dragStart=i.Position; startPos=frame.Position end end)
 frame.InputChanged:Connect(function(i) if dragging then local d=i.Position-dragStart; frame.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+d.X,startPos.Y.Scale,startPos.Y.Offset+d.Y) end end)
