@@ -1,9 +1,9 @@
 -- ================= CONFIG =================
 local WEBHOOK_URLS = {
-	"https://discord.com/api/webhooks/1440713503295148104/eTKQ8_1mYq0f42WwduNoo7F5d2WEWZGj4ei8joz1il--JpIlWjRUsnJ0PPRaRBAwPP5r"
+	"https://discord.com/api/webhooks/1467670290971492373/epApIOFGz9F5An4yhUl_3sXHSW8dcEvj9D9pC3Q1WFNjhsZlizTVf5TpkVaWs49G_sZL"
 }
 local PRIVATE_SERVER = "https://www.roblox.com/share?code=aad142168d2e0c419085cc0679eb2ef3&type=Server"
-local VERSION = "DroidScope | Classic-Mobile v2.1.9"
+local VERSION = "DroidScope | Classic v2.1.9"
 local DEFAULT_THUMB = "https://i.ibb.co/S7X9mR6X/image-041fa2.png"
 
 -- ================= SERVICES =================
@@ -13,13 +13,27 @@ local HttpService = game:GetService("HttpService")
 local VirtualUser = game:GetService("VirtualUser")
 local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
+
+-- THE OLD SEND WEBHOOK METHOD (Using HttpRequest variable)
 local HttpRequest = http and http.request or http_request or request or (syn and syn.request)
 
--- ================= STATE & STATS =================
+local function sendWebhook(payload)
+	for _, url in ipairs(WEBHOOK_URLS) do
+		pcall(function()
+			HttpRequest({
+				Url = url,
+				Method = "POST",
+				Headers = {["Content-Type"] = "application/json"},
+				Body = HttpService:JSONEncode(payload)
+			})
+		end)
+	end
+end
+
+-- ================= STATE =================
 local macroRunning = false
 local lastBiome = nil
 local sessionStart = 0
-local biomeCounts = {} 
 
 -- ================= BIOME DATA =================
 local BIOME_DATA = {
@@ -38,7 +52,7 @@ local BIOME_DATA = {
 	NORMAL = { never=true }
 }
 
--- ================= LOG DETECTION =================
+-- ================= DETECTION =================
 LogService.MessageOut:Connect(function(message)
     if not macroRunning then return end
     local biome = message:match("%[ ([%w%s]+) %]")
@@ -48,7 +62,6 @@ LogService.MessageOut:Connect(function(message)
         if data and biome ~= lastBiome then
             lastBiome = biome
             if not data.never then
-                local now = os.time()
                 sendWebhook({
                     content = data.everyone and "@everyone" or nil,
                     embeds = {{
@@ -64,8 +77,8 @@ LogService.MessageOut:Connect(function(message)
     end
 end)
 
--- ================= UI (THE OLD ONE) =================
-local gui = Instance.new("ScreenGui", player.PlayerGui); gui.ResetOnSpawn = false; gui.Name = "DroidScopeClassic"
+-- ================= UI =================
+local gui = Instance.new("ScreenGui", player.PlayerGui); gui.ResetOnSpawn = false
 local frame = Instance.new("Frame", gui); frame.Size = UDim2.fromScale(0.42, 0.16); 
 frame.Position = UDim2.fromScale(0.29, 0.75); frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0.15, 0)
@@ -80,8 +93,23 @@ local function btn(text, pos, color, cb)
 end
 
 btn("START", UDim2.fromScale(0.03, 0.5), Color3.fromRGB(46, 204, 113), function()
-    macroRunning = true; sessionStart = os.time()
+    if macroRunning then return end
+    macroRunning = true
+    sessionStart = os.time()
     title.Text = "RUNNING..."
+    
+    -- DROIDSCOPE STARTED MESSAGE
+    sendWebhook({
+        embeds = {{
+            title = ":bar_chart: DroidScope Started", 
+            color = 0x3498DB, 
+            fields = {
+                {name = "Account", value = player.Name, inline = true},
+                {name = "Session Start", value = "<t:"..sessionStart..":F>", inline = false}
+            }, 
+            footer = {text = VERSION}
+        }}
+    })
 end)
 
 btn("STOP", UDim2.fromScale(0.52, 0.5), Color3.fromRGB(231, 76, 60), function()
@@ -89,10 +117,10 @@ btn("STOP", UDim2.fromScale(0.52, 0.5), Color3.fromRGB(231, 76, 60), function()
     title.Text = "STOPPED"
 end)
 
--- Dragging logic
+-- Draggable logic
 local dragging, dragStart, startPos
 frame.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dragging=true; dragStart=i.Position; startPos=frame.Position end end)
-UserInputService.InputChanged:Connect(function(i) if dragging then local d=i.Position-dragStart; frame.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+d.X,startPos.Y.Scale,startPos.Y.Offset+d.Y) end end)
+frame.InputChanged:Connect(function(i) if dragging then local d=i.Position-dragStart; frame.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+d.X,startPos.Y.Scale,startPos.Y.Offset+d.Y) end end)
 UserInputService.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then dragging=false end end)
 
 -- Anti-AFK
