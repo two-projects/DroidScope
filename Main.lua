@@ -8,7 +8,7 @@ local MERCHANT_WEBHOOK = "https://discord.com/api/webhooks/1467851474397561018/-
 local PRIVATE_SERVER = "https://www.roblox.com/share?code=aad142168d2e0c419085cc0679eb2ef3&type=Server"
 local JESTER_ROLES = { "1467788391075545254" }
 local MARI_ROLES   = { "1467788352462913669" } 
-local VERSION = "DroidScope | v3.2.6 (bytetwo Ver)"
+local VERSION = "DroidScope | v3.2.7 (Bytetwo Ver)"
 local DEFAULT_THUMB = "https://i.ibb.co/S7X9mR6X/image-041fa2.png"
 
 -- ================= SERVICES =================
@@ -95,7 +95,7 @@ local BIOME_DATA = {
 	NORMAL = { never=true }
 }
 
--- ================= DETECTION =================
+-- ================= BIOME DETECTION =================
 LogService.MessageOut:Connect(function(message)
     if not macroRunning then return end
     local biome = message:match('\"largeImage\":{.-%\"hoverText\":%\"(.-)%\"')
@@ -118,7 +118,7 @@ LogService.MessageOut:Connect(function(message)
     end
 end)
 
--- ================= CHAT LISTENER (MERCHANT) =================
+-- ================= CHAT LISTENER (RESTORED MERCHANT) =================
 TextChatService.OnIncomingMessage = function(msg)
 	if not macroRunning or not msg.Text then return end
     if msg.TextSource ~= nil then return end 
@@ -130,7 +130,8 @@ TextChatService.OnIncomingMessage = function(msg)
 		if now - merchantCooldown[name] < MERCHANT_CD then return end
 		merchantCooldown[name] = now
         
-        local shortcode = name == "Jester" and ":black_joker:" or ":shopping_bags:"
+        -- Formatting and Icons restored from older version
+		local shortcode = name == "Jester" and ":black_joker:" or ":shopping_bags:"
 		local img = name == "Jester" and "https://i.ibb.co/DDQTH1zj/image.png" or "https://i.ibb.co/QFVGQ4r3/image.png"
 
 		sendWebhook({
@@ -151,7 +152,7 @@ TextChatService.OnIncomingMessage = function(msg)
 	end
 end
 
--- ================= MAIN LOOP (STATS) =================
+-- ================= STATS LOOP =================
 task.spawn(function()
 	while true do
 		if macroRunning and os.time() - hourStart >= 3600 then
@@ -166,13 +167,7 @@ task.spawn(function()
                 report = "No special biomes detected this hour."
             end
 
-            sendWebhook({embeds={{
-                title=":bar_chart: Hourly Biome Statistics", 
-                color=0x3498DB, 
-                description = report, 
-                fields={{name="Uptime", value=getPlainUptime(), inline=true}}, 
-                footer={text=VERSION}
-            }}})
+            sendWebhook({embeds={{title=":bar_chart: Hourly Biome Statistics", color=0x3498DB, description = report, fields={{name="Uptime", value=getPlainUptime(), inline=true}}, footer={text=VERSION}}}})
             biomeCounts = {}; totalSpecialBiomesInHour = 0
 		end
 		task.wait(5)
