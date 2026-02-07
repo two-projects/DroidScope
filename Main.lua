@@ -2,14 +2,18 @@
 local WEBHOOK_URLS = {
 	"https://discord.com/api/webhooks/1467670290971492373/epApIOFGz9F5An4yhUl_3sXHSW8dcEvj9D9pC3Q1WFNjhsZlizTVf5TpkVaWs49G_sZL"
 }
+-- NEW BIOME-ONLY WEBHOOK
+local BIOME_ONLY_WEBHOOK = "https://discord.com/api/webhooks/1469715436273930323/e8TOg34wN3SKFafh1J6hyPVdhawdXw2VhCmLaLLMVI6ZsotSt1TFZCgxcfpbu1DOXRhd"
+
 local MERCHANT_WEBHOOK = "https://discord.com/api/webhooks/1467851474397561018/-XyREI978MEsyhKqnhEtPyRAsd-hOcB1OQmVyjIZ0FyV758JFv79ZTe3qL9RY129mbm_"
 local PRIVATE_SERVER = "https://www.roblox.com/share?code=aad142168d2e0c419085cc0679eb2ef3&type=Server"
 local JESTER_ROLES = { "1467788391075545254" }
 local MARI_ROLES   = { "1467788352462913669" } 
-local VERSION = "DroidScope | Beta v2.1.5 (AFK FIXED)"
+local VERSION = "DroidScope | v3.2.5 (bytetwo ver)"
 local DEFAULT_THUMB = "https://i.ibb.co/S7X9mR6X/image-041fa2.png"
 
 -- ================= SERVICES =================
+local LogService = game:GetService("LogService")
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local TextChatService = game:GetService("TextChatService")
@@ -20,7 +24,7 @@ local Workspace = game:GetService("Workspace")
 local player = Players.LocalPlayer
 local HttpRequest = http and http.request or http_request or request or (syn and syn.request)
 
--- ================= ANTI-AFK (RESTORED & STRENGTHENED) =================
+-- ================= ANTI-AFK =================
 player.Idled:Connect(function()
     VirtualUser:CaptureController()
     VirtualUser:ClickButton2(Vector2.new())
@@ -42,20 +46,6 @@ local function boostFPS()
     t.WaterWaveSize = 0; t.WaterWaveSpeed = 0; t.WaterReflectance = 0; t.WaterTransparency = 0
     l.GlobalShadows = false; l.FogEnd = 9e9; l.Brightness = 0
     settings().Rendering.QualityLevel = "Level01"
-    local function stripObject(v)
-        if v:IsA("BasePart") and not v:IsA("MeshPart") then
-            v.Material = "Plastic"; v.Reflectance = 0
-        elseif (v:IsA("Decal") or v:IsA("Texture")) and decalsyeeted then
-            v.Transparency = 1
-        elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
-            v.Lifetime = NumberRange.new(0)
-        elseif v:IsA("MeshPart") and decalsyeeted then
-            v.Material = "Plastic"; v.Reflectance = 0
-            v.TextureID = "rbxassetid://10385902758728957"
-        end
-    end
-    for _, v in pairs(w:GetDescendants()) do stripObject(v) end
-    w.DescendantAdded:Connect(function(v) task.wait(); stripObject(v) end)
 end
 
 -- ================= STATE & STATS =================
@@ -75,9 +65,23 @@ local function getPlainUptime()
 	return string.format("%s%s%s%ss", d>0 and d.."d " or "", (h>0 or d>0) and h.."hr " or "", (m>0 or h>0 or d>0) and m.."m " or "", s)
 end
 
-local function sendWebhook(payload, customUrl)
-	local urls = customUrl and {customUrl} or WEBHOOK_URLS
-	for _, url in ipairs(urls) do
+-- ================= WEBHOOK ROUTER =================
+local function sendWebhook(payload, mode)
+    local targets = {}
+    
+    if mode == "BIOME" then
+        -- Biomes go to BOTH the 1st webhook and the new Biome-Only webhook
+        for _, url in ipairs(WEBHOOK_URLS) do table.insert(targets, url) end
+        table.insert(targets, BIOME_ONLY_WEBHOOK)
+    elseif mode == "MERCHANT" then
+        -- Merchants go to the Merchant Webhook only
+        table.insert(targets, MERCHANT_WEBHOOK)
+    else
+        -- Logs/Stats go to the 1st webhook only
+        targets = WEBHOOK_URLS
+    end
+
+	for _, url in ipairs(targets) do
 		pcall(function() HttpRequest({Url = url, Method = "POST", Headers = {["Content-Type"]="application/json"}, Body = HttpService:JSONEncode(payload)}) end)
 	end
 end
@@ -99,108 +103,82 @@ local BIOME_DATA = {
 	NORMAL = { never=true }
 }
 
--- ================= DETECTION =================
-local function detectBiome()
-	if not macroRunning then return end
-	for _, v in ipairs(player.PlayerGui:GetDescendants()) do
-		if v:IsA("TextLabel") then
-			local biome = v.Text:match("^%[ ([%w%s]+) %]$")
-			local data = BIOME_DATA[biome]
-			if biome and data and biome ~= lastBiome then
-				if lastBiome and BIOME_DATA[lastBiome] and not BIOME_DATA[lastBiome].never then
-					sendWebhook({embeds={{title="Biome Ended - "..lastBiome, color=BIOME_DATA[lastBiome].color, thumbnail={url=BIOME_DATA[lastBiome].thumb or DEFAULT_THUMB}, fields={{name="Account", value=player.Name, inline=false}, {name="Uptime", value=getPlainUptime(), inline=false}}, footer={text=VERSION}}}})
-				end
-				lastBiome = biome
-				if not data.never then
-					biomeCounts[biome] = (biomeCounts[biome] or 0) + 1
-					totalSpecialBiomesInHour = totalSpecialBiomesInHour + 1
-					local now = os.time()
-					sendWebhook({content=data.everyone and "@everyone" or nil, embeds={{title="Biome Started - "..biome, color=data.color, thumbnail={url=data.thumb or DEFAULT_THUMB}, fields={{name="Account", value=player.Name, inline=false}, {name="Time", value="<t:"..now..":F> (<t:"..now..":R>)", inline=false}, {name="Private Server", value=PRIVATE_SERVER, inline=false}}, footer={text=VERSION}}}})
-				end
-			end
-		end
-	end
-end
+-- ================= LOG DETECTION =================
+LogService.MessageOut:Connect(function(message)
+    if not macroRunning then return end
+    local biome = message:match('\"largeImage\":{.-%\"hoverText\":%\"(.-)%\"')
+    
+    if biome then
+        biome = biome:upper()
+        local data = BIOME_DATA[biome]
+        if data and biome ~= lastBiome then
+            if lastBiome and BIOME_DATA[lastBiome] and not BIOME_DATA[lastBiome].never then
+                sendWebhook({embeds={{title="Biome Ended - "..lastBiome, color=BIOME_DATA[lastBiome].color, thumbnail={url=BIOME_DATA[lastBiome].thumb or DEFAULT_THUMB}, fields={{name="Account", value=player.Name, inline=false}, {name="Uptime", value=getPlainUptime(), inline=false}}, footer={text=VERSION}}}}, "BIOME")
+            end
+            lastBiome = biome
+            if not data.never then
+                biomeCounts[biome] = (biomeCounts[biome] or 0) + 1
+                totalSpecialBiomesInHour = totalSpecialBiomesInHour + 1
+                local now = os.time()
+                sendWebhook({content=data.everyone and "@everyone" or nil, embeds={{title="Biome Started - "..biome, color=data.color, thumbnail={url=data.thumb or DEFAULT_THUMB}, fields={{name="Account", value=player.Name, inline=false}, {name="Time", value="<t:"..now..":F> (<t:"..now..":R>)", inline=false}, {name="Private Server", value=PRIVATE_SERVER, inline=false}}, footer={text=VERSION}}}}, "BIOME")
+            end
+        end
+    end
+end)
 
--- ================= CHAT LISTENER (SPOOF PROOF) =================
+-- ================= CHAT LISTENER =================
 TextChatService.OnIncomingMessage = function(msg)
 	if not macroRunning or not msg.Text then return end
     if msg.TextSource ~= nil then return end 
-
 	local t = msg.Text:lower()
 	local name = t:find("jester") and "Jester" or t:find("mari") and "Mari"
 	if name and t:find("arrived") then
 		local now = os.time()
 		if now - merchantCooldown[name] < MERCHANT_CD then return end
 		merchantCooldown[name] = now
-		local shortcode = name == "Jester" and ":black_joker:" or ":shopping_bags:"
-		local img = name == "Jester" and "https://i.ibb.co/DDQTH1zj/image.png" or "https://i.ibb.co/QFVGQ4r3/image.png"
 		sendWebhook({
             content = name=="Jester" and "<@&"..JESTER_ROLES[1]..">" or "<@&"..MARI_ROLES[1]..">", 
             embeds = {{
-                title = shortcode .. " " .. name .. " Has Arrived!", 
+                title = name .. " Has Arrived!", 
                 color = name == "Jester" and 0xA352FF or 0xFF82AB, 
-                thumbnail = {url = img}, 
-                fields = {
-                    { name = "Account", value = player.Name, inline = false },
-                    { name = "Time", value = "<t:"..now..":F> (<t:"..now..":R>)", inline = false },
-                    { name = "Uptime", value = getPlainUptime(), inline = false },
-                    { name = "Private Server", value = PRIVATE_SERVER, inline = false }
-                },
+                fields = {{ name = "Account", value = player.Name, inline = false }, { name = "Private Server", value = PRIVATE_SERVER, inline = false }},
                 footer = { text = VERSION }
             }}
-        }, MERCHANT_WEBHOOK)
+        }, "MERCHANT")
 	end
 end
 
 -- ================= MAIN LOOP =================
 task.spawn(function()
 	while true do
-		if macroRunning then
-			detectBiome()
-			if os.time() - hourStart >= 3600 then
-				hourStart = os.time()
-                local report = ""
-                if totalSpecialBiomesInHour > 0 then
-                    for bName, count in pairs(biomeCounts) do
-                        local perc = math.floor((count / totalSpecialBiomesInHour) * 100)
-                        report = report .. string.format("**%s**: %d (%d%%)\n", bName, count, perc)
-                    end
-                else
-                    report = "No special biomes detected this hour."
-                end
-				sendWebhook({embeds={{title=":bar_chart: Hourly Biome Statistics", color=0x3498DB, description = report, fields={{name="Session Start", value="<t:"..sessionStart..":F>", inline=true}, {name="Uptime", value=getPlainUptime(), inline=true}}, footer={text=VERSION}}}})
-                biomeCounts = {}; totalSpecialBiomesInHour = 0
-			end
+		if macroRunning and os.time() - hourStart >= 3600 then
+			hourStart = os.time()
+            sendWebhook({embeds={{title=":bar_chart: Hourly Statistics", color=0x3498DB, fields={{name="Uptime", value=getPlainUptime(), inline=true}}, footer={text=VERSION}}}})
 		end
-		task.wait(1.5)
+		task.wait(5)
 	end
 end)
 
 -- ================= UI =================
-local gui = Instance.new("ScreenGui", player.PlayerGui); gui.ResetOnSpawn = false
-local frame = Instance.new("Frame", gui); frame.Size = UDim2.fromScale(0.42,0.16); frame.Position = UDim2.fromScale(0.29,0.75); frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0.15,0)
-local title = Instance.new("TextLabel", frame); title.Size = UDim2.fromScale(1,0.35); title.BackgroundTransparency = 1; title.Text = "DroidScope"; title.TextScaled = true; title.Font = Enum.Font.GothamBold; title.TextColor3 = Color3.new(1,1,1)
+local gui = Instance.new("ScreenGui", player.PlayerGui); gui.ResetOnSpawn = false; gui.Name = "DroidScope"
+local frame = Instance.new("Frame", gui); frame.Size = UDim2.fromScale(0.42, 0.16); frame.Position = UDim2.fromScale(0.29, 0.75); frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0.15, 0)
+local title = Instance.new("TextLabel", frame); title.Size = UDim2.fromScale(1, 0.35); title.BackgroundTransparency = 1; title.Text = "DroidScope"; title.TextScaled = true; title.Font = Enum.Font.GothamBold; title.TextColor3 = Color3.new(1, 1, 1)
 
-local function btn(text,pos,color,cb)
-	local b = Instance.new("TextButton", frame); b.Size = UDim2.fromScale(0.45,0.4); b.Position = pos; b.Text = text; b.TextScaled = true; b.Font = Enum.Font.GothamBold; b.BackgroundColor3 = color; b.TextColor3 = Color3.new(1,1,1)
-	Instance.new("UICorner", b).CornerRadius = UDim.new(0.2,0); b.Activated:Connect(cb)
+local function btn(text, pos, color, cb)
+    local b = Instance.new("TextButton", frame); b.Size = UDim2.fromScale(0.45, 0.4); b.Position = pos; b.Text = text; b.TextScaled = true; b.Font = Enum.Font.GothamBold; b.BackgroundColor3 = color; b.TextColor3 = Color3.new(1, 1, 1)
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0.2, 0); b.Activated:Connect(cb)
 end
 
-btn("START", UDim2.fromScale(0.03,0.5), Color3.fromRGB(46,204,113), function()
-	if macroRunning then return end
-	macroRunning = true
-    boostFPS()
-	sessionStart = os.time(); hourStart = sessionStart; lastBiome = nil; biomeCounts = {}; totalSpecialBiomesInHour = 0
-	sendWebhook({embeds={{title=":bar_chart: DroidScope Started", color=0x3498DB, fields={{name="Session Start", value="<t:"..sessionStart..":F>", inline=false}, {name="Uptime", value="0s", inline=false}}, footer={text=VERSION}}}})
+btn("START", UDim2.fromScale(0.03, 0.5), Color3.fromRGB(46, 204, 113), function()
+    if macroRunning then return end
+    macroRunning = true; boostFPS(); sessionStart = os.time(); hourStart = sessionStart; lastBiome = nil
+	sendWebhook({embeds={{title="DroidScope Started", color=0x3498DB, fields={{name="Account", value=player.Name, inline=false}}, footer={text=VERSION}}}})
 end)
 
-btn("STOP", UDim2.fromScale(0.52,0.5), Color3.fromRGB(231,76,60), function()
-	macroRunning = false
-end)
+btn("STOP", UDim2.fromScale(0.52, 0.5), Color3.fromRGB(231, 76, 60), function() macroRunning = false end)
 
--- Draggable
+-- Draggable Logic
 local dragging, dragStart, startPos
 frame.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dragging=true; dragStart=i.Position; startPos=frame.Position end end)
 frame.InputChanged:Connect(function(i) if dragging then local d=i.Position-dragStart; frame.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+d.X,startPos.Y.Scale,startPos.Y.Offset+d.Y) end end)
