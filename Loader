@@ -3,7 +3,7 @@ local WEBHOOK_URLS = {
 	"https://discord.com/api/webhooks/1440713503295148104/eTKQ8_1mYq0f42WwduNoo7F5d2WEWZGj4ei8joz1il--JpIlWjRUsnJ0PPRaRBAwPP5r"
 }
 local PRIVATE_SERVER = "https://www.roblox.com/share?code=aad142168d2e0c419085cc0679eb2ef3&type=Server"
-local VERSION = "DroidScope | Bloxstrap-Fix v2.2.0"
+local VERSION = "DroidScope | Classic v2.1.5"
 local DEFAULT_THUMB = "https://i.ibb.co/S7X9mR6X/image-041fa2.png"
 
 -- ================= SERVICES =================
@@ -11,22 +11,40 @@ local LogService = game:GetService("LogService")
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local VirtualUser = game:GetService("VirtualUser")
+local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
 local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
-
-[cite_start]-- THE OLD SEND WEBHOOK METHOD [cite: 22]
 local HttpRequest = http and http.request or http_request or request or (syn and syn.request)
 
+-- ================= BOOSTER =================
+local function boostFPS()
+    local decalsyeeted = true 
+    local w = Workspace
+    local l = Lighting
+    local t = w.Terrain
+    pcall(function()
+        sethiddenproperty(l,"Technology",2)
+        sethiddenproperty(t,"Decoration",false)
+    end)
+    t.WaterWaveSize = 0; t.WaterWaveSpeed = 0;
+    t.WaterReflectance = 0; t.WaterTransparency = 0
+    l.GlobalShadows = false; l.FogEnd = 9e9;
+    l.Brightness = 0
+    settings().Rendering.QualityLevel = "Level01"
+end
+
+-- ================= WEBHOOK =================
 local function sendWebhook(payload)
 	for _, url in ipairs(WEBHOOK_URLS) do
-		pcall(function()
-			HttpRequest({
-				Url = url,
-				Method = "POST",
-				Headers = {["Content-Type"] = "application/json"},
-				Body = HttpService:JSONEncode(payload)
-			})
-		end)
+		pcall(function() 
+            HttpRequest({
+                Url = url, 
+                Method = "POST", 
+                Headers = {["Content-Type"]="application/json"}, 
+                Body = HttpService:JSONEncode(payload)
+            }) 
+        end)
 	end
 end
 
@@ -35,94 +53,107 @@ local macroRunning = false
 local lastBiome = nil
 local sessionStart = 0
 
-[cite_start]-- ================= BIOME DATA [cite: 30] =================
-local BIOME_DATA = {
-	WINDY = { color=0x91F7FF, thumb="https://maxstellar.github.io/biome_thumb/WINDY.png" },
-	RAINY = { color=0x4385FF, thumb="https://maxstellar.github.io/biome_thumb/RAINY.png" },
-	SNOWY = { color=0xC4F5F6, thumb="https://maxstellar.github.io/biome_thumb/SNOWY.png" },
-	["SAND STORM"] = { color=0xF4C27C, thumb="https://maxstellar.github.io/biome_thumb/SAND_STORM.png" },
-	HELL = { color=0xFB4F29, thumb="https://maxstellar.github.io/biome_thumb/HELL.png" },
-	STARFALL = { color=0x6784E0, thumb="https://maxstellar.github.io/biome_thumb/STARFALL.png" },
-	CORRUPTION = { color=0x9042FF, thumb="https://maxstellar.github.io/biome_thumb/CORRUPTION.png" },
-	NULL = { color=0x000000, thumb="https://maxstellar.github.io/biome_thumb/NULL.png" },
-	HEAVEN = { color=0xADD8E6, thumb="https://maxstellar.github.io/biome_thumb/HEAVEN.png" },
-	GLITCHED = { color=0x65FF65, thumb="https://i.postimg.cc/mDzwFfX1/GLITCHED.png", everyone=true },
-	DREAMSPACE = { color=0xFF7DFF, thumb="https://maxstellar.github.io/biome_thumb/DREAMSPACE.png", everyone=true },
-	NORMAL = { never=true }
-}
-
--- ================= BLOXSTRAP LOG DETECTION =================
+-- ================= DETECTION =================
 LogService.MessageOut:Connect(function(message)
     if not macroRunning then return end
     
-    -- New pattern to find biome name inside the Bloxstrap JSON log
-    local biome = message:match('\"largeImage\":{.*\"hoverText\":\"(%w+)\"') or 
-                  message:match('\"largeImage\":{.*\"hoverText\":\"(%w+%s%w+)\"')
+    -- Detects biome from the "hoverText" in the Bloxstrap JSON log
+    local biome = message:match('\"hoverText\":\"(.-)\"')
     
     if biome then
         biome = biome:upper()
-        local data = BIOME_DATA[biome]
-        
-        if data and biome ~= lastBiome then
+        if biome ~= "NORMAL" and biome ~= lastBiome then
             lastBiome = biome
-            if not data.never then
-                sendWebhook({
-                    content = data.everyone and "@everyone" or nil,
-                    embeds = {{
-                        title = "Biome Detected - " .. biome,
-                        color = data.color,
-                        thumbnail = {url = data.thumb or DEFAULT_THUMB},
-                        fields = {
-                            {name = "Account", value = player.Name, inline = true},
-                            {name = "Source", value = "Bloxstrap RPC", inline = true},
-                            {name = "Server", value = PRIVATE_SERVER, inline = false}
-                        },
-                        footer = {text = VERSION}
-                    }}
-                })
-            end
+            sendWebhook({
+                embeds = {{
+                    title = "Biome Detected - " .. biome,
+                    color = 0x3498DB,
+                    thumbnail = {url = DEFAULT_THUMB},
+                    fields = {
+                        {name = "Account", value = player.Name, inline = true},
+                        {name = "Server", value = PRIVATE_SERVER, inline = false}
+                    },
+                    footer = {text = VERSION}
+                }}
+            })
         end
     end
 end)
 
-[cite_start]-- ================= UI (CLASSIC STYLE) [cite: 39, 40] =================
-local gui = Instance.new("ScreenGui", player.PlayerGui); gui.ResetOnSpawn = false
-local frame = Instance.new("Frame", gui); frame.Size = UDim2.fromScale(0.42, 0.16); 
-frame.Position = UDim2.fromScale(0.29, 0.75); frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0.15, 0)
+-- ================= OLD GUI CODE =================
+local gui = Instance.new("ScreenGui", player.PlayerGui)
+gui.ResetOnSpawn = false
+gui.Name = "DroidScope"
 
-local title = Instance.new("TextLabel", frame); title.Size = UDim2.fromScale(1, 0.35); title.BackgroundTransparency = 1; 
-title.Text = "DroidScope"; title.TextScaled = true; title.Font = Enum.Font.GothamBold; title.TextColor3 = Color3.new(1, 1, 1)
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.fromScale(0.42,0.16)
+frame.Position = UDim2.fromScale(0.29,0.75)
+frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0.15,0)
 
-local function btn(text, pos, color, cb)
-    local b = Instance.new("TextButton", frame); b.Size = UDim2.fromScale(0.45, 0.4); b.Position = pos; 
-    [cite_start]b.Text = text; b.TextScaled = true; b.Font = Enum.Font.GothamBold; b.BackgroundColor3 = color; b.TextColor3 = Color3.new(1, 1, 1) [cite: 41, 42]
-    Instance.new("UICorner", b).CornerRadius = UDim.new(0.2, 0); b.Activated:Connect(cb)
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.fromScale(1,0.35)
+title.BackgroundTransparency = 1
+title.Text = "DroidScope"
+title.TextScaled = true
+title.Font = Enum.Font.GothamBold
+title.TextColor3 = Color3.new(1,1,1)
+
+local function btn(text,pos,color,cb)
+	local b = Instance.new("TextButton", frame)
+	b.Size = UDim2.fromScale(0.45,0.4)
+	b.Position = pos
+	b.Text = text
+	b.TextScaled = true
+	b.Font = Enum.Font.GothamBold
+	b.BackgroundColor3 = color
+	b.TextColor3 = Color3.new(1,1,1)
+	Instance.new("UICorner", b).CornerRadius = UDim.new(0.2,0)
+	b.Activated:Connect(cb)
 end
 
-btn("START", UDim2.fromScale(0.03, 0.5), Color3.fromRGB(46, 204, 113), function()
-    if macroRunning then return end
-    macroRunning = true
-    sessionStart = os.time()
-    title.Text = "RUNNING..."
-    
-    sendWebhook({
+btn("START", UDim2.fromScale(0.03,0.5), Color3.fromRGB(46,204,113), function()
+	if macroRunning then return end
+	macroRunning = true
+    boostFPS()
+	sessionStart = os.time()
+	sendWebhook({
         embeds = {{
             title = ":bar_chart: DroidScope Started", 
             color = 0x3498DB, 
-            fields = {
-                {name = "Account", value = player.Name, inline = true},
-                {name = "Mode", value = "Bloxstrap RPC Detection", inline = true}
-            }, 
+            fields = {{name = "Account", value = player.Name, inline = false}}, 
             footer = {text = VERSION}
         }}
     })
 end)
 
-btn("STOP", UDim2.fromScale(0.52, 0.5), Color3.fromRGB(231, 76, 60), function()
-    macroRunning = false
-    title.Text = "STOPPED"
+btn("STOP", UDim2.fromScale(0.52,0.5), Color3.fromRGB(231,76,60), function()
+	macroRunning = false
 end)
 
-[cite_start]-- Anti-AFK [cite: 23]
-player.Idled:Connect(function() VirtualUser:CaptureController(); VirtualUser:ClickButton2(Vector2.new()) end)
+-- Draggable Logic from Scripot.txt
+local dragging, dragStart, startPos
+frame.InputBegan:Connect(function(i) 
+    if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then 
+        dragging = true; dragStart = i.Position; startPos = frame.Position 
+    end 
+end)
+
+UserInputService.InputChanged:Connect(function(i) 
+    if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then 
+        local d = i.Position - dragStart
+        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y) 
+    end 
+end)
+
+UserInputService.InputEnded:Connect(function(i) 
+    if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then 
+        dragging = false 
+    end 
+end)
+
+-- Anti-AFK
+player.Idled:Connect(function() 
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new()) 
+end)
