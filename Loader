@@ -1,9 +1,9 @@
 -- ================= CONFIG =================
 local WEBHOOK_URLS = {
-	"https://discord.com/api/webhooks/1440713503295148104/eTKQ8_1mYq0f42WwduNoo7F5d2WEWZGj4ei8joz1il--JpIlWjRUsnJ0PPRaRBAwPP5r"
+	"https://discord.com/api/webhooks/1467670290971492373/epApIOFGz9F5An4yhUl_3sXHSW8dcEvj9D9pC3Q1WFNjhsZlizTVf5TpkVaWs49G_sZL"
 }
 local PRIVATE_SERVER = "https://www.roblox.com/share?code=aad142168d2e0c419085cc0679eb2ef3&type=Server"
-local VERSION = "DroidScope | Classic v2.1.5"
+local VERSION = "DroidScope | Classic v2.2.2"
 local DEFAULT_THUMB = "https://i.ibb.co/S7X9mR6X/image-041fa2.png"
 
 -- ================= SERVICES =================
@@ -11,13 +11,13 @@ local LogService = game:GetService("LogService")
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local VirtualUser = game:GetService("VirtualUser")
+local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
 local Workspace = game:GetService("Workspace")
-local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 local HttpRequest = http and http.request or http_request or request or (syn and syn.request)
 
--- ================= BOOSTER =================
+-- ================= ULTRA FPS BOOSTER (FROM OLD SCRIPT) =================
 local function boostFPS()
     local decalsyeeted = true 
     local w = Workspace
@@ -27,14 +27,12 @@ local function boostFPS()
         sethiddenproperty(l,"Technology",2)
         sethiddenproperty(t,"Decoration",false)
     end)
-    t.WaterWaveSize = 0; t.WaterWaveSpeed = 0;
-    t.WaterReflectance = 0; t.WaterTransparency = 0
-    l.GlobalShadows = false; l.FogEnd = 9e9;
-    l.Brightness = 0
+    t.WaterWaveSize = 0; t.WaterWaveSpeed = 0; t.WaterReflectance = 0; t.WaterTransparency = 0
+    l.GlobalShadows = false; l.FogEnd = 9e9; l.Brightness = 0
     settings().Rendering.QualityLevel = "Level01"
 end
 
--- ================= WEBHOOK =================
+-- ================= WEBHOOK METHOD =================
 local function sendWebhook(payload)
 	for _, url in ipairs(WEBHOOK_URLS) do
 		pcall(function() 
@@ -51,14 +49,13 @@ end
 -- ================= STATE =================
 local macroRunning = false
 local lastBiome = nil
-local sessionStart = 0
 
--- ================= DETECTION =================
+-- ================= DETECTION (FIXED FOR LARGEIMAGE) =================
 LogService.MessageOut:Connect(function(message)
     if not macroRunning then return end
     
-    -- Detects biome from the "hoverText" in the Bloxstrap JSON log
-    local biome = message:match('\"hoverText\":\"(.-)\"')
+    -- Specifically finds the hoverText INSIDE the largeImage section to avoid "Sols RNG" detection
+    local biome = message:match('\"largeImage\":{.-%\"hoverText\":%\"(.-)%\"')
     
     if biome then
         biome = biome:upper()
@@ -80,44 +77,26 @@ LogService.MessageOut:Connect(function(message)
     end
 end)
 
--- ================= OLD GUI CODE =================
-local gui = Instance.new("ScreenGui", player.PlayerGui)
-gui.ResetOnSpawn = false
-gui.Name = "DroidScope"
+-- ================= ORIGINAL GUI CODE =================
+local gui = Instance.new("ScreenGui", player.PlayerGui); gui.ResetOnSpawn = false; gui.Name = "DroidScope"
+local frame = Instance.new("Frame", gui); frame.Size = UDim2.fromScale(0.42, 0.16); 
+frame.Position = UDim2.fromScale(0.29, 0.75); frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0.15, 0)
 
-local frame = Instance.new("Frame", gui)
-frame.Size = UDim2.fromScale(0.42,0.16)
-frame.Position = UDim2.fromScale(0.29,0.75)
-frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0.15,0)
+local title = Instance.new("TextLabel", frame); title.Size = UDim2.fromScale(1, 0.35); title.BackgroundTransparency = 1; 
+title.Text = "DroidScope"; title.TextScaled = true; title.Font = Enum.Font.GothamBold; title.TextColor3 = Color3.new(1, 1, 1)
 
-local title = Instance.new("TextLabel", frame)
-title.Size = UDim2.fromScale(1,0.35)
-title.BackgroundTransparency = 1
-title.Text = "DroidScope"
-title.TextScaled = true
-title.Font = Enum.Font.GothamBold
-title.TextColor3 = Color3.new(1,1,1)
-
-local function btn(text,pos,color,cb)
-	local b = Instance.new("TextButton", frame)
-	b.Size = UDim2.fromScale(0.45,0.4)
-	b.Position = pos
-	b.Text = text
-	b.TextScaled = true
-	b.Font = Enum.Font.GothamBold
-	b.BackgroundColor3 = color
-	b.TextColor3 = Color3.new(1,1,1)
-	Instance.new("UICorner", b).CornerRadius = UDim.new(0.2,0)
-	b.Activated:Connect(cb)
+local function btn(text, pos, color, cb)
+    local b = Instance.new("TextButton", frame); b.Size = UDim2.fromScale(0.45, 0.4); b.Position = pos; 
+    b.Text = text; b.TextScaled = true; b.Font = Enum.Font.GothamBold; b.BackgroundColor3 = color; b.TextColor3 = Color3.new(1, 1, 1)
+    Instance.new("UICorner", b).CornerRadius = UDim.new(0.2, 0); b.Activated:Connect(cb)
 end
 
-btn("START", UDim2.fromScale(0.03,0.5), Color3.fromRGB(46,204,113), function()
-	if macroRunning then return end
-	macroRunning = true
+btn("START", UDim2.fromScale(0.03, 0.5), Color3.fromRGB(46, 204, 113), function()
+    if macroRunning then return end
+    macroRunning = true
     boostFPS()
-	sessionStart = os.time()
-	sendWebhook({
+    sendWebhook({
         embeds = {{
             title = ":bar_chart: DroidScope Started", 
             color = 0x3498DB, 
@@ -127,33 +106,15 @@ btn("START", UDim2.fromScale(0.03,0.5), Color3.fromRGB(46,204,113), function()
     })
 end)
 
-btn("STOP", UDim2.fromScale(0.52,0.5), Color3.fromRGB(231,76,60), function()
-	macroRunning = false
+btn("STOP", UDim2.fromScale(0.52, 0.5), Color3.fromRGB(231, 76, 60), function()
+    macroRunning = false
 end)
 
--- Draggable Logic from Scripot.txt
+-- Draggable logic from Scripot.txt
 local dragging, dragStart, startPos
-frame.InputBegan:Connect(function(i) 
-    if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then 
-        dragging = true; dragStart = i.Position; startPos = frame.Position 
-    end 
-end)
+frame.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dragging=true; dragStart=i.Position; startPos=frame.Position end end)
+UserInputService.InputChanged:Connect(function(i) if dragging then local d=i.Position-dragStart; frame.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+d.X,startPos.Y.Scale,startPos.Y.Offset+d.Y) end end)
+UserInputService.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then dragging=false end end)
 
-UserInputService.InputChanged:Connect(function(i) 
-    if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then 
-        local d = i.Position - dragStart
-        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y) 
-    end 
-end)
-
-UserInputService.InputEnded:Connect(function(i) 
-    if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then 
-        dragging = false 
-    end 
-end)
-
--- Anti-AFK
-player.Idled:Connect(function() 
-    VirtualUser:CaptureController()
-    VirtualUser:ClickButton2(Vector2.new()) 
-end)
+-- Anti-AFK (Scripot.txt version)
+player.Idled:Connect(function() VirtualUser:CaptureController(); VirtualUser:ClickButton2(Vector2.new()) end)
