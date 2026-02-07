@@ -2,14 +2,13 @@
 local WEBHOOK_URLS = {
 	"https://discord.com/api/webhooks/1467670290971492373/epApIOFGz9F5An4yhUl_3sXHSW8dcEvj9D9pC3Q1WFNjhsZlizTVf5TpkVaWs49G_sZL"
 }
--- NEW BIOME-ONLY WEBHOOK
 local BIOME_ONLY_WEBHOOK = "https://discord.com/api/webhooks/1469715436273930323/e8TOg34wN3SKFafh1J6hyPVdhawdXw2VhCmLaLLMVI6ZsotSt1TFZCgxcfpbu1DOXRhd"
-
 local MERCHANT_WEBHOOK = "https://discord.com/api/webhooks/1467851474397561018/-XyREI978MEsyhKqnhEtPyRAsd-hOcB1OQmVyjIZ0FyV758JFv79ZTe3qL9RY129mbm_"
+
 local PRIVATE_SERVER = "https://www.roblox.com/share?code=aad142168d2e0c419085cc0679eb2ef3&type=Server"
 local JESTER_ROLES = { "1467788391075545254" }
 local MARI_ROLES   = { "1467788352462913669" } 
-local VERSION = "DroidScope | v3.2.5 (bytetwo ver)"
+local VERSION = "DroidScope | v3.2.6 (bytetwo Ver)"
 local DEFAULT_THUMB = "https://i.ibb.co/S7X9mR6X/image-041fa2.png"
 
 -- ================= SERVICES =================
@@ -35,10 +34,7 @@ end)
 
 -- ================= ULTRA FPS BOOSTER =================
 local function boostFPS()
-    local decalsyeeted = true 
-    local w = Workspace
-    local l = Lighting
-    local t = w.Terrain
+    local w, l, t = Workspace, Lighting, Workspace.Terrain
     pcall(function()
         sethiddenproperty(l,"Technology",2)
         sethiddenproperty(t,"Decoration",false)
@@ -68,16 +64,12 @@ end
 -- ================= WEBHOOK ROUTER =================
 local function sendWebhook(payload, mode)
     local targets = {}
-    
     if mode == "BIOME" then
-        -- Biomes go to BOTH the 1st webhook and the new Biome-Only webhook
         for _, url in ipairs(WEBHOOK_URLS) do table.insert(targets, url) end
         table.insert(targets, BIOME_ONLY_WEBHOOK)
     elseif mode == "MERCHANT" then
-        -- Merchants go to the Merchant Webhook only
         table.insert(targets, MERCHANT_WEBHOOK)
     else
-        -- Logs/Stats go to the 1st webhook only
         targets = WEBHOOK_URLS
     end
 
@@ -103,7 +95,7 @@ local BIOME_DATA = {
 	NORMAL = { never=true }
 }
 
--- ================= LOG DETECTION =================
+-- ================= DETECTION =================
 LogService.MessageOut:Connect(function(message)
     if not macroRunning then return end
     local biome = message:match('\"largeImage\":{.-%\"hoverText\":%\"(.-)%\"')
@@ -126,34 +118,62 @@ LogService.MessageOut:Connect(function(message)
     end
 end)
 
--- ================= CHAT LISTENER =================
+-- ================= CHAT LISTENER (MERCHANT) =================
 TextChatService.OnIncomingMessage = function(msg)
 	if not macroRunning or not msg.Text then return end
     if msg.TextSource ~= nil then return end 
+
 	local t = msg.Text:lower()
 	local name = t:find("jester") and "Jester" or t:find("mari") and "Mari"
 	if name and t:find("arrived") then
 		local now = os.time()
 		if now - merchantCooldown[name] < MERCHANT_CD then return end
 		merchantCooldown[name] = now
+        
+        local shortcode = name == "Jester" and ":black_joker:" or ":shopping_bags:"
+		local img = name == "Jester" and "https://i.ibb.co/DDQTH1zj/image.png" or "https://i.ibb.co/QFVGQ4r3/image.png"
+
 		sendWebhook({
             content = name=="Jester" and "<@&"..JESTER_ROLES[1]..">" or "<@&"..MARI_ROLES[1]..">", 
             embeds = {{
-                title = name .. " Has Arrived!", 
+                title = shortcode .. " " .. name .. " Has Arrived!", 
                 color = name == "Jester" and 0xA352FF or 0xFF82AB, 
-                fields = {{ name = "Account", value = player.Name, inline = false }, { name = "Private Server", value = PRIVATE_SERVER, inline = false }},
+                thumbnail = {url = img}, 
+                fields = {
+                    { name = "Account", value = player.Name, inline = false },
+                    { name = "Time", value = "<t:"..now..":F> (<t:"..now..":R>)", inline = false },
+                    { name = "Uptime", value = getPlainUptime(), inline = false },
+                    { name = "Private Server", value = PRIVATE_SERVER, inline = false }
+                },
                 footer = { text = VERSION }
             }}
         }, "MERCHANT")
 	end
 end
 
--- ================= MAIN LOOP =================
+-- ================= MAIN LOOP (STATS) =================
 task.spawn(function()
 	while true do
 		if macroRunning and os.time() - hourStart >= 3600 then
 			hourStart = os.time()
-            sendWebhook({embeds={{title=":bar_chart: Hourly Statistics", color=0x3498DB, fields={{name="Uptime", value=getPlainUptime(), inline=true}}, footer={text=VERSION}}}})
+            local report = ""
+            if totalSpecialBiomesInHour > 0 then
+                for bName, count in pairs(biomeCounts) do
+                    local perc = math.floor((count / totalSpecialBiomesInHour) * 100)
+                    report = report .. string.format("**%s**: %d (%d%%)\n", bName, count, perc)
+                end
+            else
+                report = "No special biomes detected this hour."
+            end
+
+            sendWebhook({embeds={{
+                title=":bar_chart: Hourly Biome Statistics", 
+                color=0x3498DB, 
+                description = report, 
+                fields={{name="Uptime", value=getPlainUptime(), inline=true}}, 
+                footer={text=VERSION}
+            }}})
+            biomeCounts = {}; totalSpecialBiomesInHour = 0
 		end
 		task.wait(5)
 	end
@@ -172,7 +192,7 @@ end
 
 btn("START", UDim2.fromScale(0.03, 0.5), Color3.fromRGB(46, 204, 113), function()
     if macroRunning then return end
-    macroRunning = true; boostFPS(); sessionStart = os.time(); hourStart = sessionStart; lastBiome = nil
+    macroRunning = true; boostFPS(); sessionStart = os.time(); hourStart = sessionStart; lastBiome = nil; biomeCounts = {}; totalSpecialBiomesInHour = 0
 	sendWebhook({embeds={{title="DroidScope Started", color=0x3498DB, fields={{name="Account", value=player.Name, inline=false}}, footer={text=VERSION}}}})
 end)
 
