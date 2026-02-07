@@ -1,0 +1,183 @@
+-- ================= CONFIG =================
+local WEBHOOK_URLS = {
+	"https://discord.com/api/webhooks/1440713503295148104/eTKQ8_1mYq0f42WwduNoo7F5d2WEWZGj4ei8joz1il--JpIlWjRUsnJ0PPRaRBAwPP5r"
+}
+local PRIVATE_SERVER = "https://www.roblox.com/share?code=aad142168d2e0c419085cc0679eb2ef3&type=Server"
+local VERSION = "DroidScope | v2.1.5"
+local DEFAULT_THUMB = "https://i.ibb.co/S7X9mR6X/image-041fa2.png"
+
+-- ================= SERVICES =================
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local VirtualUser = game:GetService("VirtualUser")
+local Lighting = game:GetService("Lighting")
+local Workspace = game:GetService("Workspace")
+local UserInputService = game:GetService("UserInputService")
+local player = Players.LocalPlayer
+local HttpRequest = http and http.request or http_request or request or (syn and syn.request)
+
+-- ================= ANTI-AFK =================
+player.Idled:Connect(function()
+    VirtualUser:CaptureController() [cite: 1]
+    VirtualUser:ClickButton2(Vector2.new()) [cite: 1]
+    VirtualUser:Button2Down(Vector2.new(0,0), Workspace.CurrentCamera.CFrame) [cite: 1]
+    task.wait(0.1) [cite: 1]
+    VirtualUser:Button2Up(Vector2.new(0,0), Workspace.CurrentCamera.CFrame) [cite: 2]
+end)
+
+-- ================= ULTRA FPS BOOSTER =================
+local function boostFPS()
+    local decalsyeeted = true 
+    local w = Workspace
+    local l = Lighting
+    local t = w.Terrain
+    pcall(function()
+        sethiddenproperty(l,"Technology",2) [cite: 3]
+        sethiddenproperty(t,"Decoration",false) [cite: 3]
+    end)
+    t.WaterWaveSize = 0; t.WaterWaveSpeed = 0; [cite: 3]
+    t.WaterReflectance = 0; t.WaterTransparency = 0 [cite: 3]
+    l.GlobalShadows = false; l.FogEnd = 9e9; [cite: 4]
+    l.Brightness = 0 [cite: 4]
+    settings().Rendering.QualityLevel = "Level01" [cite: 4]
+    
+    local function stripObject(v)
+        if v:IsA("BasePart") and not v:IsA("MeshPart") then
+            v.Material = "Plastic"; v.Reflectance = 0 [cite: 5]
+        elseif (v:IsA("Decal") or v:IsA("Texture")) and decalsyeeted then
+            v.Transparency = 1 [cite: 5]
+        elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
+            v.Lifetime = NumberRange.new(0) [cite: 5]
+        elseif v:IsA("MeshPart") and decalsyeeted then
+            v.Material = "Plastic"; v.Reflectance = 0 [cite: 6]
+            v.TextureID = "rbxassetid://10385902758728957" [cite: 6]
+        end
+    end
+    for _, v in pairs(w:GetDescendants()) do stripObject(v) end
+    w.DescendantAdded:Connect(function(v) task.wait(); stripObject(v) end) [cite: 6]
+end
+
+-- ================= STATE & STATS =================
+local macroRunning = false
+local lastBiome = nil
+local sessionStart = 0
+local hourStart = 0
+local biomeCounts = {} 
+local totalSpecialBiomesInHour = 0
+
+local function getPlainUptime()
+	local diff = os.time() - sessionStart
+	local d = math.floor(diff / 86400); [cite: 7]
+	local h = math.floor((diff % 86400) / 3600) [cite: 7]
+	local m = math.floor((diff % 3600) / 60); [cite: 8]
+	local s = diff % 60 [cite: 8]
+	return string.format("%s%s%s%ss", d>0 and d.."d " or "", (h>0 or d>0) and h.."hr " or "", (m>0 or h>0 or d>0) and m.."m " or "", s)
+end
+
+local function sendWebhook(payload)
+	for _, url in ipairs(WEBHOOK_URLS) do
+		pcall(function() HttpRequest({Url = url, Method = "POST", Headers = {["Content-Type"]="application/json"}, Body = HttpService:JSONEncode(payload)}) end)
+	end
+end
+
+-- ================= BIOME DATA =================
+local BIOME_DATA = {
+	WINDY = { color=0xFFFFFF, thumb="https://maxstellar.github.io/biome_thumb/WINDY.png" }, [cite: 9]
+	RAINY = { color=0x55925F, thumb="https://maxstellar.github.io/biome_thumb/RAINY.png" }, [cite: 9]
+	SNOWY = { color=0xFFFFFF, thumb="https://maxstellar.github.io/biome_thumb/SNOWY.png" }, [cite: 9]
+	["SAND STORM"] = { color=0xFFA500, thumb="https://maxstellar.github.io/biome_thumb/SAND%20STORM.png" }, [cite: 9]
+	HELL = { color=0xFB4F29, thumb="https://maxstellar.github.io/biome_thumb/HELL.png" }, [cite: 9]
+	STARFALL = { color=0xFFFFFF, thumb="https://maxstellar.github.io/biome_thumb/STARFALL.png" }, [cite: 9]
+	CORRUPTION = { color=0x800080, thumb="https://maxstellar.github.io/biome_thumb/CORRUPTION.png" }, [cite: 9]
+	NULL = { color=0x808080, thumb="https://maxstellar.github.io/biome_thumb/NULL.png" }, [cite: 9]
+	HEAVEN = { color=0xADD8E6, thumb="https://maxstellar.github.io/biome_thumb/HEAVEN.png" }, [cite: 9]
+	GLITCHED = { color=0xFFFF00, thumb="https://i.postimg.cc/mDzwFfX1/GLITCHED.png", everyone=true }, [cite: 9]
+	DREAMSPACE = { color=0xFF00FF, thumb="https://maxstellar.github.io/biome_thumb/DREAMSPACE.png", everyone=true }, [cite: 9]
+	CYBERSPACE = { color=0x00FFFF, thumb="https://raw.githubusercontent.com/cresqnt-sys/MultiScope/main/assets/cyberspace.png", everyone=true }, [cite: 9]
+	NORMAL = { never=true } [cite: 9]
+}
+
+-- ================= MOBILE DETECTION =================
+local function detectBiome()
+	if not macroRunning then return end
+	for _, v in ipairs(player.PlayerGui:GetDescendants()) do [cite: 9]
+		if v:IsA("TextLabel") then [cite: 10]
+			local biome = v.Text:match("^%[ ([%w%s]+) %]$") [cite: 10]
+			local data = BIOME_DATA[biome]
+			
+			if biome and data and biome ~= lastBiome then [cite: 10]
+				-- End Webhook
+				if lastBiome and BIOME_DATA[lastBiome] and not BIOME_DATA[lastBiome].never then [cite: 10]
+					sendWebhook({embeds={{title="Biome Ended - "..lastBiome, color=BIOME_DATA[lastBiome].color, thumbnail={url=BIOME_DATA[lastBiome].thumb or DEFAULT_THUMB}, fields={{name="Account", value=player.Name, inline=false}, {name="Uptime", value=getPlainUptime(), inline=false}}, footer={text=VERSION}}}}) [cite: 10]
+				end
+				
+				lastBiome = biome
+				
+				-- Start Webhook
+				if not data.never then [cite: 10]
+					biomeCounts[biome] = (biomeCounts[biome] or 0) + 1 [cite: 10]
+					totalSpecialBiomesInHour = totalSpecialBiomesInHour + 1 [cite: 10]
+					local now = os.time()
+					sendWebhook({content=data.everyone and "@everyone" or nil, embeds={{title="Biome Started - "..biome, color=data.color, thumbnail={url=data.thumb or DEFAULT_THUMB}, fields={{name="Account", value=player.Name, inline=false}, {name="Time", value="<t:"..now..":F> (<t:"..now..":R>)", inline=false}, {name="Private Server", value=PRIVATE_SERVER, inline=false}}, footer={text=VERSION}}}}) [cite: 10]
+				end
+			end
+		end
+	end
+end
+
+-- ================= MAIN LOOP =================
+task.spawn(function()
+	while true do
+		if macroRunning then
+			detectBiome()
+			if os.time() - hourStart >= 3600 then [cite: 15]
+				hourStart = os.time()
+                local report = ""
+                if totalSpecialBiomesInHour > 0 then [cite: 15]
+                    for bName, count in pairs(biomeCounts) do
+                        local perc = math.floor((count / totalSpecialBiomesInHour) * 100) [cite: 15]
+                        report = report .. string.format("**%s**: %d (%d%%)\n", bName, count, perc) [cite: 15]
+                    end
+                else
+                    report = "No special biomes detected this hour." [cite: 16]
+                end
+				sendWebhook({embeds={{title=":bar_chart: Hourly Biome Statistics", color=0x3498DB, description = report, fields={{name="Session Start", value="<t:"..sessionStart..":F>", inline=true}, {name="Uptime", value=getPlainUptime(), inline=true}}, footer={text=VERSION}}}}) [cite: 16]
+                biomeCounts = {}; totalSpecialBiomesInHour = 0 [cite: 17]
+			end
+		end
+		task.wait(2) -- Loop delay
+	end
+end)
+
+-- ================= UI =================
+local gui = Instance.new("ScreenGui", player.PlayerGui); gui.ResetOnSpawn = false [cite: 18]
+local frame = Instance.new("Frame", gui); frame.Size = UDim2.fromScale(0.42,0.16); [cite: 18]
+frame.Position = UDim2.fromScale(0.29,0.75); frame.BackgroundColor3 = Color3.fromRGB(25,25,25) [cite: 18]
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0.15,0)
+local title = Instance.new("TextLabel", frame); title.Size = UDim2.fromScale(1,0.35); title.BackgroundTransparency = 1; [cite: 19]
+title.Text = "DroidScope"; title.TextScaled = true; title.Font = Enum.Font.GothamBold; title.TextColor3 = Color3.new(1,1,1) [cite: 19]
+
+local function btn(text,pos,color,cb)
+	local b = Instance.new("TextButton", frame); [cite: 20]
+	b.Size = UDim2.fromScale(0.45,0.4); b.Position = pos; b.Text = text; b.TextScaled = true; b.Font = Enum.Font.GothamBold; b.BackgroundColor3 = color; [cite: 20]
+	b.TextColor3 = Color3.new(1,1,1) [cite: 21]
+	Instance.new("UICorner", b).CornerRadius = UDim.new(0.2,0); b.Activated:Connect(cb) [cite: 21]
+end
+
+btn("START", UDim2.fromScale(0.03,0.5), Color3.fromRGB(46,204,113), function() [cite: 21]
+	if macroRunning then return end
+	macroRunning = true
+    boostFPS()
+	sessionStart = os.time(); hourStart = sessionStart; lastBiome = nil; biomeCounts = {}; totalSpecialBiomesInHour = 0 [cite: 21]
+	sendWebhook({embeds={{title=":bar_chart: DroidScope Started", color=0x3498DB, fields={{name="Session Start", value="<t:"..sessionStart..":F>", inline=false}, {name="Uptime", value="0s", inline=false}}, footer={text=VERSION}}}}) [cite: 21]
+end)
+
+btn("STOP", UDim2.fromScale(0.52,0.5), Color3.fromRGB(231,76,60), function() [cite: 21]
+	macroRunning = false
+end)
+
+-- Draggable UI Logic
+local dragging, dragStart, startPos
+frame.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dragging=true; dragStart=i.Position; startPos=frame.Position end end)
+frame.InputChanged:Connect(function(i) if dragging then local d=i.Position-dragStart; frame.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+d.X,startPos.Y.Scale,startPos.Y.Offset+d.Y) end end)
+UserInputService.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then dragging=false end end)
