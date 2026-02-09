@@ -3,7 +3,7 @@ local WEBHOOK_URLS = {
 	"https://discord.com/api/webhooks/1467670290971492373/epApIOFGz9F5An4yhUl_3sXHSW8dcEvj9D9pC3Q1WFNjhsZlizTVf5TpkVaWs49G_sZL"
 }
 local BIOME_ONLY_WEBHOOK = "https://discord.com/api/webhooks/1469715436273930323/e8TOg34wN3SKFafh1J6hyPVdhawdXw2VhCmLaLLMVI6ZsotSt1TFZCgxcfpbu1DOXRhd"
-local MERCHANT_WEBHOOK = "https://discord.com/api/webhooks/1467851474397561018/-XyREI978MEsyhKqnhEtPyRAsd-hOcB1OQmVyjIZ0FyV758JFv79ZTe3qL9RY129mbm_"
+local MERCHANT_WEBHOOK = "https://discord.com/api/webhooks/1470426996289831014/sisMXXUCmNo8hglEyuz8REqmOlTHhuatq_ga9InF-NYHHKtje0roebpYaLir8muF5255"
 
 local PRIVATE_SERVER = "https://www.roblox.com/share?code=aad142168d2e0c419085cc0679eb2ef3&type=Server"
 local JESTER_ROLES = { "1467788391075545254" }
