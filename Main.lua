@@ -8,7 +8,7 @@ local MERCHANT_WEBHOOK = "https://discord.com/api/webhooks/1470426996289831014/s
 local PRIVATE_SERVER = "https://www.roblox.com/share?code=aad142168d2e0c419085cc0679eb2ef3&type=Server"
 local JESTER_ROLES = { "1467788391075545254" }
 local MARI_ROLES   = { "1467788352462913669" } 
-local VERSION = "DroidScope | v3.2.7 (Bytetwo Ver)"
+local VERSION = "Mobile Macro"
 local DEFAULT_THUMB = "https://i.ibb.co/S7X9mR6X/image-041fa2.png"
 
 -- ================= SERVICES =================
