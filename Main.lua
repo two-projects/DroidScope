@@ -175,10 +175,10 @@ task.spawn(function()
 end)
 
 -- ================= UI =================
-local gui = Instance.new("ScreenGui", player.PlayerGui); gui.ResetOnSpawn = false; gui.Name = "DroidScope"
+local gui = Instance.new("ScreenGui", player.PlayerGui); gui.ResetOnSpawn = false; gui.Name = "MobileMacro"
 local frame = Instance.new("Frame", gui); frame.Size = UDim2.fromScale(0.42, 0.16); frame.Position = UDim2.fromScale(0.29, 0.75); frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 Instance.new("UICorner", frame).CornerRadius = UDim.new(0.15, 0)
-local title = Instance.new("TextLabel", frame); title.Size = UDim2.fromScale(1, 0.35); title.BackgroundTransparency = 1; title.Text = "DroidScope"; title.TextScaled = true; title.Font = Enum.Font.GothamBold; title.TextColor3 = Color3.new(1, 1, 1)
+local title = Instance.new("TextLabel", frame); title.Size = UDim2.fromScale(1, 0.35); title.BackgroundTransparency = 1; title.Text = "Mobile Macro"; title.TextScaled = true; title.Font = Enum.Font.GothamBold; title.TextColor3 = Color3.new(1, 1, 1)
 
 local function btn(text, pos, color, cb)
     local b = Instance.new("TextButton", frame); b.Size = UDim2.fromScale(0.45, 0.4); b.Position = pos; b.Text = text; b.TextScaled = true; b.Font = Enum.Font.GothamBold; b.BackgroundColor3 = color; b.TextColor3 = Color3.new(1, 1, 1)
@@ -188,7 +188,7 @@ end
 btn("START", UDim2.fromScale(0.03, 0.5), Color3.fromRGB(46, 204, 113), function()
     if macroRunning then return end
     macroRunning = true; boostFPS(); sessionStart = os.time(); hourStart = sessionStart; lastBiome = nil; biomeCounts = {}; totalSpecialBiomesInHour = 0
-	sendWebhook({embeds={{title="DroidScope Started", color=0x3498DB, fields={{name="Account", value=player.Name, inline=false}}, footer={text=VERSION}}}})
+	sendWebhook({embeds={{title="Mobile Macro Started", color=0x3498DB, fields={{name="Account", value=player.Name, inline=false}}, footer={text=VERSION}}}})
 end)
 
 btn("STOP", UDim2.fromScale(0.52, 0.5), Color3.fromRGB(231, 76, 60), function() macroRunning = false end)
