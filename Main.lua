@@ -8,6 +8,7 @@ local MERCHANT_WEBHOOK = "https://discord.com/api/webhooks/1470426996289831014/s
 local PRIVATE_SERVER = "https://www.roblox.com/share?code=aad142168d2e0c419085cc0679eb2ef3&type=Server"
 local JESTER_ROLES = { "1467788391075545254" }
 local MARI_ROLES   = { "1467788352462913669" } 
+local RIN_ROLES    = { "1472981347776598067" }
 local VERSION = "Mobile Macro"
 local DEFAULT_THUMB = "https://i.ibb.co/S7X9mR6X/image-041fa2.png"
 
@@ -51,7 +52,7 @@ local sessionStart = 0
 local hourStart = 0
 local biomeCounts = {} 
 local totalSpecialBiomesInHour = 0
-local merchantCooldown = { Jester = 0, Mari = 0 }
+local merchantCooldown = { Jester = 0, Mari = 0, Rin = 0 }
 local MERCHANT_CD = 25
 
 local function getPlainUptime()
@@ -69,6 +70,10 @@ local function sendWebhook(payload, mode)
         table.insert(targets, BIOME_ONLY_WEBHOOK)
     elseif mode == "MERCHANT" then
         table.insert(targets, MERCHANT_WEBHOOK)
+    elseif mode == "MARI_SPECIAL" then
+        -- Sends to BOTH Merchant Webhook AND 1st Webhook List
+        table.insert(targets, MERCHANT_WEBHOOK)
+        for _, url in ipairs(WEBHOOK_URLS) do table.insert(targets, url) end
     else
         targets = WEBHOOK_URLS
     end
@@ -124,21 +129,25 @@ TextChatService.OnIncomingMessage = function(msg)
     if msg.TextSource ~= nil then return end 
 
 	local t = msg.Text:lower()
-	local name = t:find("jester") and "Jester" or t:find("mari") and "Mari"
+	local name = t:find("jester") and "Jester" or t:find("mari") and "Mari" or t:find("rin") and "Rin"
 	if name and t:find("arrived") then
 		local now = os.time()
 		if now - merchantCooldown[name] < MERCHANT_CD then return end
 		merchantCooldown[name] = now
         
-        -- Formatting and Icons restored from older version
-		local shortcode = name == "Jester" and ":black_joker:" or ":shopping_bags:"
-		local img = name == "Jester" and "https://i.ibb.co/DDQTH1zj/image.png" or "https://i.ibb.co/QFVGQ4r3/image.png"
+        -- Formatting and Icons
+		local shortcode = (name == "Jester" and ":black_joker:") or (name == "Mari" and ":shopping_bags:") or ":test_tube:"
+		local img = (name == "Jester" and "https://i.ibb.co/DDQTH1zj/image.png") or (name == "Mari" and "https://i.ibb.co/QFVGQ4r3/image.png") or "https://i.ibb.co/0y7mRLzC/rin-icon.png"
+        local roleID = (name == "Jester" and JESTER_ROLES[1]) or (name == "Mari" and MARI_ROLES[1]) or RIN_ROLES[1]
+        local embedColor = (name == "Jester" and 0xA352FF) or (name == "Mari" and 0xFF82AB) or 0x6495ED
+
+        local targetMode = (name == "Mari") and "MARI_SPECIAL" or "MERCHANT"
 
 		sendWebhook({
-            content = name=="Jester" and "<@&"..JESTER_ROLES[1]..">" or "<@&"..MARI_ROLES[1]..">", 
+            content = "<@&"..roleID..">", 
             embeds = {{
                 title = shortcode .. " " .. name .. " Has Arrived!", 
-                color = name == "Jester" and 0xA352FF or 0xFF82AB, 
+                color = embedColor, 
                 thumbnail = {url = img}, 
                 fields = {
                     { name = "Account", value = player.Name, inline = false },
@@ -148,7 +157,7 @@ TextChatService.OnIncomingMessage = function(msg)
                 },
                 footer = { text = VERSION }
             }}
-        }, "MERCHANT")
+        }, targetMode)
 	end
 end
 
@@ -198,3 +207,4 @@ local dragging, dragStart, startPos
 frame.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dragging=true; dragStart=i.Position; startPos=frame.Position end end)
 frame.InputChanged:Connect(function(i) if dragging then local d=i.Position-dragStart; frame.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+d.X,startPos.Y.Scale,startPos.Y.Offset+d.Y) end end)
 UserInputService.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then dragging=false end end)
+ 
