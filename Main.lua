@@ -1,9 +1,5 @@
 -- ================= CONFIG =================
-local WEBHOOK_URLS = {
-	"https://discord.com/api/webhooks/1467670290971492373/epApIOFGz9F5An4yhUl_3sXHSW8dcEvj9D9pC3Q1WFNjhsZlizTVf5TpkVaWs49G_sZL"
-}
-local BIOME_ONLY_WEBHOOK = "https://discord.com/api/webhooks/1469715436273930323/e8TOg34wN3SKFafh1J6hyPVdhawdXw2VhCmLaLLMVI6ZsotSt1TFZCgxcfpbu1DOXRhd"
-local MERCHANT_WEBHOOK = "https://discord.com/api/webhooks/1470426996289831014/sisMXXUCmNo8hglEyuz8REqmOlTHhuatq_ga9InF-NYHHKtje0roebpYaLir8muF5255"
+local TARGET_WEBHOOK = "https://discord.com/api/webhooks/1440713503295148104/eTKQ8_1mYq0f42WwduNoo7F5d2WEWZGj4ei8joz1il--JpIlWjRUsnJ0PPRaRBAwPP5r"
 
 local PRIVATE_SERVER = "https://www.roblox.com/share?code=aad142168d2e0c419085cc0679eb2ef3&type=Server"
 local JESTER_ROLES = { "1467788391075545254" }
@@ -62,25 +58,17 @@ local function getPlainUptime()
 	return string.format("%s%s%s%ss", d>0 and d.."d " or "", (h>0 or d>0) and h.."hr " or "", (m>0 or h>0 or d>0) and m.."m " or "", s)
 end
 
--- ================= WEBHOOK ROUTER =================
-local function sendWebhook(payload, mode)
-    local targets = {}
-    if mode == "BIOME" then
-        for _, url in ipairs(WEBHOOK_URLS) do table.insert(targets, url) end
-        table.insert(targets, BIOME_ONLY_WEBHOOK)
-    elseif mode == "MERCHANT" then
-        table.insert(targets, MERCHANT_WEBHOOK)
-    elseif mode == "MARI_SPECIAL" then
-        -- Sends to BOTH Merchant Webhook AND 1st Webhook List
-        table.insert(targets, MERCHANT_WEBHOOK)
-        for _, url in ipairs(WEBHOOK_URLS) do table.insert(targets, url) end
-    else
-        targets = WEBHOOK_URLS
-    end
-
-	for _, url in ipairs(targets) do
-		pcall(function() HttpRequest({Url = url, Method = "POST", Headers = {["Content-Type"]="application/json"}, Body = HttpService:JSONEncode(payload)}) end)
-	end
+-- ================= WEBHOOK ROUTER (SIMPLIFIED) =================
+local function sendWebhook(payload)
+    -- All messages now go strictly to the single provided URL
+    pcall(function() 
+        HttpRequest({
+            Url = TARGET_WEBHOOK, 
+            Method = "POST", 
+            Headers = {["Content-Type"]="application/json"}, 
+            Body = HttpService:JSONEncode(payload)
+        }) 
+    end)
 end
 
 -- ================= BIOME DATA =================
@@ -110,20 +98,20 @@ LogService.MessageOut:Connect(function(message)
         local data = BIOME_DATA[biome]
         if data and biome ~= lastBiome then
             if lastBiome and BIOME_DATA[lastBiome] and not BIOME_DATA[lastBiome].never then
-                sendWebhook({embeds={{title="Biome Ended - "..lastBiome, color=BIOME_DATA[lastBiome].color, thumbnail={url=BIOME_DATA[lastBiome].thumb or DEFAULT_THUMB}, fields={{name="Account", value=player.Name, inline=false}, {name="Uptime", value=getPlainUptime(), inline=false}}, footer={text=VERSION}}}}, "BIOME")
+                sendWebhook({embeds={{title="Biome Ended - "..lastBiome, color=BIOME_DATA[lastBiome].color, thumbnail={url=BIOME_DATA[lastBiome].thumb or DEFAULT_THUMB}, fields={{name="Account", value=player.Name, inline=false}, {name="Uptime", value=getPlainUptime(), inline=false}}, footer={text=VERSION}}}})
             end
             lastBiome = biome
             if not data.never then
                 biomeCounts[biome] = (biomeCounts[biome] or 0) + 1
                 totalSpecialBiomesInHour = totalSpecialBiomesInHour + 1
                 local now = os.time()
-                sendWebhook({content=data.everyone and "@everyone" or nil, embeds={{title="Biome Started - "..biome, color=data.color, thumbnail={url=data.thumb or DEFAULT_THUMB}, fields={{name="Account", value=player.Name, inline=false}, {name="Time", value="<t:"..now..":F> (<t:"..now..":R>)", inline=false}, {name="Private Server", value=PRIVATE_SERVER, inline=false}}, footer={text=VERSION}}}}, "BIOME")
+                sendWebhook({content=data.everyone and "@everyone" or nil, embeds={{title="Biome Started - "..biome, color=data.color, thumbnail={url=data.thumb or DEFAULT_THUMB}, fields={{name="Account", value=player.Name, inline=false}, {name="Time", value="<t:"..now..":F> (<t:"..now..":R>)", inline=false}, {name="Private Server", value=PRIVATE_SERVER, inline=false}}, footer={text=VERSION}}}})
             end
         end
     end
 end)
 
--- ================= CHAT LISTENER (RESTORED MERCHANT) =================
+-- ================= CHAT LISTENER (MERCHANTS) =================
 TextChatService.OnIncomingMessage = function(msg)
 	if not macroRunning or not msg.Text then return end
     if msg.TextSource ~= nil then return end 
@@ -135,16 +123,13 @@ TextChatService.OnIncomingMessage = function(msg)
 		if now - merchantCooldown[name] < MERCHANT_CD then return end
 		merchantCooldown[name] = now
         
-        -- Formatting and Icons
 		local shortcode = (name == "Jester" and ":black_joker:") or (name == "Mari" and ":shopping_bags:") or ":test_tube:"
 		local img = (name == "Jester" and "https://i.ibb.co/DDQTH1zj/image.png") or (name == "Mari" and "https://i.ibb.co/QFVGQ4r3/image.png") or "https://i.ibb.co/0y7mRLzC/rin-icon.png"
-        local roleID = (name == "Jester" and JESTER_ROLES[1]) or (name == "Mari" and MARI_ROLES[1]) or RIN_ROLES[1]
+        local roleID = (name == "Jester" and JESTER_ROLES[1]) or (name == "Mari" and MARI_ROLES[1]) or (name == "Rin" and RIN_ROLES[1])
         local embedColor = (name == "Jester" and 0xA352FF) or (name == "Mari" and 0xFF82AB) or 0x6495ED
 
-        local targetMode = (name == "Mari") and "MARI_SPECIAL" or "MERCHANT"
-
 		sendWebhook({
-            content = "<@&"..roleID..">", 
+            content = roleID and "<@&"..roleID..">" or nil, 
             embeds = {{
                 title = shortcode .. " " .. name .. " Has Arrived!", 
                 color = embedColor, 
@@ -157,7 +142,7 @@ TextChatService.OnIncomingMessage = function(msg)
                 },
                 footer = { text = VERSION }
             }}
-        }, targetMode)
+        })
 	end
 end
 
@@ -207,4 +192,3 @@ local dragging, dragStart, startPos
 frame.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then dragging=true; dragStart=i.Position; startPos=frame.Position end end)
 frame.InputChanged:Connect(function(i) if dragging then local d=i.Position-dragStart; frame.Position=UDim2.new(startPos.X.Scale,startPos.X.Offset+d.X,startPos.Y.Scale,startPos.Y.Offset+d.Y) end end)
 UserInputService.InputEnded:Connect(function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then dragging=false end end)
- 
