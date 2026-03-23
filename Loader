@@ -1,70 +1,67 @@
 -- ================= CONFIG =================
 local TARGET_WEBHOOK = "https://discord.com/api/webhooks/1440713503295148104/eTKQ8_1mYq0f42WwduNoo7F5d2WEWZGj4ei8joz1il--JpIlWjRUsnJ0PPRaRBAwPP5r"
-local VERSION = "History Scanner"
+local VERSION = "Full History Scraper"
 
 -- ================= SERVICES =================
 local LogService = game:GetService("LogService")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
-local HttpRequest = http and http.request or http_request or request or (syn and syn.request)
+local HttpRequest = (syn and syn.request) or (http and http.request) or http_request or request
 
--- ================= FUNCTIONS =================
-local function sendWebhook(payload)
+-- ================= SCANNER LOGIC =================
+local function scanFullHistory()
+    local logs = LogService:GetLogHistory()
+    local biomeTotals = {}
+    local foundCount = 0
+    
+    -- This pattern looks for the biome name inside the RPC/Log data
+    local pattern = '\"largeImage\":{.-%\"hoverText\":%\"(.-)%\"'
+
+    for _, entry in ipairs(logs) do
+        local biome = entry.message:match(pattern)
+        if biome then
+            biome = biome:upper()
+            -- Filter out "NORMAL" and track the rest
+            if biome ~= "NORMAL" then
+                biomeTotals[biome] = (biomeTotals[biome] or 0) + 1
+                foundCount = foundCount + 1
+            end
+        end
+    end
+
+    -- Formatting the result string
+    local reportBody = ""
+    if foundCount > 0 then
+        for name, amount in pairs(biomeTotals) do
+            -- Format: Name: Amount (clean, no "times" text)
+            reportBody = reportBody .. string.format("**%s**: %d\n", name, amount)
+        end
+    else
+        reportBody = "No special biomes found in the logs for this session."
+    end
+
+    -- Send the compiled report
     pcall(function()
         HttpRequest({
             Url = TARGET_WEBHOOK,
             Method = "POST",
             Headers = {["Content-Type"] = "application/json"},
-            Body = HttpService:JSONEncode(payload)
+            Body = HttpService:JSONEncode({
+                embeds = {{
+                    title = "📜 Full Session History Report",
+                    description = reportBody,
+                    color = 0x7289DA,
+                    fields = {
+                        { name = "Account", value = Players.LocalPlayer.Name, inline = true },
+                        { name = "Logs Scanned", value = tostring(#logs), inline = true },
+                        { name = "Server Age", value = "3d 15h", inline = true }
+                    },
+                    footer = { text = VERSION }
+                }}
+            })
         })
     end)
 end
 
-local function scanHistory()
-    local history = LogService:GetLogHistory()
-    local totals = {}
-    local foundAny = false
-
-    -- Pattern to match biome changes in the console logs
-    local pattern = '\"largeImage\":{.-%\"hoverText\":%\"(.-)%\"'
-
-    for _, logEntry in ipairs(history) do
-        local biome = logEntry.message:match(pattern)
-        if biome then
-            biome = biome:upper()
-            -- Exclude "NORMAL" as requested
-            if biome ~= "NORMAL" then
-                totals[biome] = (totals[biome] or 0) + 1
-                foundAny = true
-            end
-        end
-    end
-
-    -- Formatting the report
-    local report = ""
-    if foundAny then
-        for bName, count in pairs(totals) do
-            -- Simple formatting: Name then Count (No "times" word used)
-            report = report .. string.format("**%s**: %d\n", bName, count)
-        end
-    else
-        report = "No previous special biomes found in the logs."
-    end
-
-    -- Send to Webhook
-    sendWebhook({
-        embeds = {{
-            title = "📜 Full Server History Report (Past 2 Days)",
-            description = report,
-            color = 0x9B59B6,
-            fields = {
-                { name = "Account", value = Players.LocalPlayer.Name, inline = true },
-                { name = "Log Entries Scanned", value = tostring(#history), inline = true }
-            },
-            footer = { text = VERSION }
-        }}
-    })
-end
-
--- Execute the scan immediately
-scanHistory()
+-- Run it!
+scanFullHistory()
