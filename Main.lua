@@ -1,5 +1,7 @@
 -- ================= CONFIG =================
 local TARGET_WEBHOOK = "https://discord.com/api/webhooks/1440713503295148104/eTKQ8_1mYq0f42WwduNoo7F5d2WEWZGj4ei8joz1il--JpIlWjRUsnJ0PPRaRBAwPP5r"
+-- NEW MERCHANT WEBHOOK
+local MERCHANT_WEBHOOK = "https://discord.com/api/webhooks/1470426996289831014/sisMXXUCmNo8hglEyuz8REqmOlTHhuatq_ga9InF-NYHHKtje0roebpYaLir8muF5255"
 
 local PRIVATE_SERVER = "https://www.roblox.com/share?code=aad142168d2e0c419085cc0679eb2ef3&type=Server"
 local JESTER_ROLES = { "1467788391075545254" }
@@ -58,12 +60,12 @@ local function getPlainUptime()
 	return string.format("%s%s%s%ss", d>0 and d.."d " or "", (h>0 or d>0) and h.."hr " or "", (m>0 or h>0 or d>0) and m.."m " or "", s)
 end
 
--- ================= WEBHOOK ROUTER (SIMPLIFIED) =================
-local function sendWebhook(payload)
-    -- All messages now go strictly to the single provided URL
+-- ================= WEBHOOK ROUTER =================
+local function sendWebhook(payload, url)
+    local targetUrl = url or TARGET_WEBHOOK
     pcall(function() 
         HttpRequest({
-            Url = TARGET_WEBHOOK, 
+            Url = targetUrl, 
             Method = "POST", 
             Headers = {["Content-Type"]="application/json"}, 
             Body = HttpService:JSONEncode(payload)
@@ -142,7 +144,7 @@ TextChatService.OnIncomingMessage = function(msg)
                 },
                 footer = { text = VERSION }
             }}
-        })
+        }, MERCHANT_WEBHOOK) -- SENDS TO THE NEW MERCHANT WEBHOOK
 	end
 end
 
